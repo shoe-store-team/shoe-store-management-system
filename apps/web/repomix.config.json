@@ -1,0 +1,34 @@
+{
+  "output": {
+    "filePath": "repomix-output.md",
+    "style": "markdown",
+    "removeComments": false,
+    "removeEmptyLines": true,
+    "topFilesLength": 10,
+    "showLineNumbers": false
+  },
+  "include": [
+    "**/*"
+  ],
+  "ignore": {
+    "useGitignore": true,
+    "useDefaultPatterns": true,
+    "customPatterns": [
+      "**/node_modules/**",
+      "**/dist/**",
+      "**/build/**",
+      "**/.vite/**",
+      "**/.env*",
+      "**/coverage/**",
+      "package-lock.json",
+      "pnpm-lock.yaml",
+      "yarn.lock",
+      "**/*.svg",
+      "**/*.png",
+      "**/*.jpg",
+      "**/*.jpeg",
+      "**/*.ico",
+      "prisma/migrations/**"
+    ]
+  }
+}

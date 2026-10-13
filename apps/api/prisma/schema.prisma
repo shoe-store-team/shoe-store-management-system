@@ -1,0 +1,91 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------------------------------------------
+// BẢNG NGƯỜI DÙNG (Khách hàng & Admin)
+// ------------------------------------------------------
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String?
+  role      Role     @default(CUSTOMER)
+  orders    Order[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum Role {
+  CUSTOMER
+  ADMIN
+}
+
+// ------------------------------------------------------
+// BẢNG SẢN PHẨM & TỒN KHO
+// ------------------------------------------------------
+model Product {
+  id          String           @id @default(uuid())
+  name        String
+  description String?
+  basePrice   Float
+  variants    ProductVariant[]
+  categoryId  String?
+  category    Category?        @relation(fields: [categoryId], references: [id])
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model Category {
+  id       String    @id @default(uuid())
+  name     String    @unique
+  products Product[]
+}
+
+// Quản lý size, màu sắc và số lượng tồn kho cho từng đôi giày
+model ProductVariant {
+  id        String      @id @default(uuid())
+  productId String
+  product   Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  size      Int         // VD: 39, 40, 41, 42
+  color     String      // VD: "Black", "White"
+  stock     Int         @default(0)
+  orderItems OrderItem[]
+}
+
+// ------------------------------------------------------
+// BẢNG ĐƠN HÀNG
+// ------------------------------------------------------
+model Order {
+  id          String      @id @default(uuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id])
+  totalAmount Float
+  status      OrderStatus @default(PENDING)
+  items       OrderItem[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model OrderItem {
+  id        String         @id @default(uuid())
+  orderId   String
+  order     Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variantId String
+  variant   ProductVariant @relation(fields: [variantId], references: [id])
+  quantity  Int
+  price     Float          // Giá tại thời điểm mua (đề phòng sau này giày đổi giá)
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
