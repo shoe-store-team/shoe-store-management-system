@@ -1,4 +1,4 @@
-import { useState, useEffect, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import type { SanPham, TaoSanPhamDto, CapNhatSanPhamDto } from '../types/product'
 
 type ProductFormProps = {
@@ -16,32 +16,15 @@ export function ProductForm({
   onCapNhat,
   onHuySua,
 }: ProductFormProps) {
-  const [tenGiay, setTenGiay] = useState('')
-  const [moTa, setMoTa] = useState('')
-  const [giaBan, setGiaBan] = useState('')
+  const [tenGiay, setTenGiay] = useState(sanPhamDangSua?.name ?? '')
+  const [moTa, setMoTa] = useState(sanPhamDangSua?.description ?? '')
+  const [giaBan, setGiaBan] = useState(sanPhamDangSua ? String(sanPhamDangSua.basePrice) : '')
   const [sizeGiay, setSizeGiay] = useState('40')
   const [mauSac, setMauSac] = useState('Black')
   const [tonKho, setTonKho] = useState('10')
 
-  // Đổ dữ liệu vào form khi bấm nút "Sửa"
-  useEffect(() => {
-    if (sanPhamDangSua) {
-      setTenGiay(sanPhamDangSua.name)
-      setMoTa(sanPhamDangSua.description || '')
-      setGiaBan(String(sanPhamDangSua.basePrice))
-    } else {
-      setTenGiay('')
-      setMoTa('')
-      setGiaBan('')
-      setSizeGiay('40')
-      setMauSac('Black')
-      setTonKho('10')
-    }
-  }, [sanPhamDangSua])
-
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-
     if (sanPhamDangSua) {
       await onCapNhat(sanPhamDangSua.id, {
         name: tenGiay,
@@ -57,7 +40,6 @@ export function ProductForm({
         color: mauSac,
         stock: Number(tonKho),
       })
-      // Reset form sau khi thêm mới thành công
       setTenGiay('')
       setMoTa('')
       setGiaBan('')
