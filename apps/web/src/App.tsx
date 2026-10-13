@@ -5,7 +5,7 @@ import { productService } from './services/productService'
 import { ProductForm } from './components/ProductForm'
 import { ProductTable } from './components/ProductTable'
 
-function App() {
+export default function App() {
   const [sanPhamDangSua, setSanPhamDangSua] = useState<SanPham | null>(null)
   const [sanPhams, setSanPhams] = useState<SanPham[]>([])
   const [dangTai, setDangTai] = useState(true)
@@ -14,27 +14,38 @@ function App() {
   const [loi, setLoi] = useState('')
 
   useEffect(() => {
-    layDanhSach()
-  }, [])
+    let ignore = false
 
-  async function layDanhSach() {
-    try {
-      setDangTai(true)
-      const data = await productService.layTatCa()
-      setSanPhams(data)
-    } catch (error) {
-      setLoi(error instanceof Error ? error.message : 'Đã xảy ra lỗi khi tải dữ liệu')
-    } finally {
-      setDangTai(false)
+    async function loadData() {
+      try {
+        const data = await productService.layTatCa()
+        if (!ignore) {
+          setSanPhams(data)
+        }
+      } catch (error) {
+        if (!ignore) {
+          setLoi(error instanceof Error ? error.message : 'Đã xảy ra lỗi khi tải danh sách')
+        }
+      } finally {
+        if (!ignore) {
+          setDangTai(false)
+        }
+      }
     }
-  }
+
+    void loadData()
+
+    return () => {
+      ignore = true
+    }
+  }, [])
 
   async function xuLyThem(data: TaoSanPhamDto) {
     setThongBao('')
     setDangXuLy(true)
     try {
-      const productMoi = await productService.them(data)
-      setSanPhams((danhSachCu) => [...danhSachCu, productMoi])
+      const spMoi = await productService.them(data)
+      setSanPhams((prev) => [...prev, spMoi])
       setThongBao('Thêm sản phẩm thành công!')
     } catch (error) {
       setThongBao(error instanceof Error ? error.message : 'Lỗi khi thêm')
@@ -47,10 +58,8 @@ function App() {
     setThongBao('')
     setDangXuLy(true)
     try {
-      const productDaSua = await productService.capNhat(id, data)
-      setSanPhams((danhSachCu) =>
-        danhSachCu.map((sp) => (sp.id === id ? productDaSua : sp))
-      )
+      const spDaSua = await productService.capNhat(id, data)
+      setSanPhams((prev) => prev.map((sp) => (sp.id === id ? spDaSua : sp)))
       setSanPhamDangSua(null)
       setThongBao('Cập nhật sản phẩm thành công!')
     } catch (error) {
@@ -65,7 +74,7 @@ function App() {
 
     try {
       await productService.xoa(id)
-      setSanPhams((danhSachCu) => danhSachCu.filter((sp) => sp.id !== id))
+      setSanPhams((prev) => prev.filter((sp) => sp.id !== id))
       alert('Xóa sản phẩm thành công!')
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Đã xảy ra lỗi khi xóa')
@@ -84,6 +93,7 @@ function App() {
 
       <section className="noi-dung">
         <ProductForm
+          key={sanPhamDangSua?.id ?? 'create'}
           sanPhamDangSua={sanPhamDangSua}
           dangXuLy={dangXuLy}
           onThem={xuLyThem}
@@ -118,5 +128,3 @@ function App() {
     </main>
   )
 }
-
-export default App
