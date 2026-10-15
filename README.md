@@ -78,3 +78,66 @@ shoe-store/
             ├── services/              # File gọi API riêng của từng người
             ├── types/                 # File định nghĩa kiểu TypeScript riêng của từng người
             └── App.tsx                # [CHỈ NGƯỜI 1 SỬA] Đã chia sẵn đường dẫn cho 6 trang
+
+# QUY ƯỚC PHÁT TRIỂN DỰ ÁN SHOE STORE
+
+## 1. Nguyên tắc phân công
+
+- Mỗi thành viên chịu trách nhiệm chính cho chức năng được giao, bao gồm frontend, backend và kiểm thử chức năng đó.
+- Mỗi file có một người chịu trách nhiệm chính.
+- Không tự ý sửa file thuộc module của thành viên khác khi chưa trao đổi.
+- Các file dùng chung do nhóm trưởng quản lý và tích hợp.
+- Mỗi thành viên phải kiểm tra chức năng của mình trước khi gửi Pull Request.
+
+## 2. Phân công sở hữu
+
+| Thành viên | Chức năng | Frontend | Backend |
+|---|---|---|---|
+| Người 1 — Nhóm trưởng | Auth, phân quyền, tích hợp | `pages/auth/`, `services/authService.ts`, `types/auth.ts` | `modules/auth/` |
+| Người 2 | Quản lý sản phẩm, biến thể, tồn kho | `pages/admin-products/`, `services/productService.ts`, `types/product.ts` | `modules/products/` |
+| Người 3 | Trang chủ, danh mục, tìm kiếm, chi tiết giày | `pages/catalog/`, `services/catalogService.ts`, `types/catalog.ts` | `modules/catalog/` |
+| Người 4 | Giỏ hàng và tạo đơn | `pages/checkout/`, `services/cartService.ts`, `types/cart.ts` | `modules/cart/` và phần checkout được thống nhất |
+| Người 5 | Quản lý đơn hàng, thống kê | `pages/admin-orders/`, `services/orderService.ts`, `types/order.ts` | `modules/orders/` |
+| Người 6 | Hồ sơ, địa chỉ, lịch sử mua hàng | `pages/customer/`, `services/customerService.ts`, `types/customer.ts` | `modules/customer/` |
+
+## 3. File dùng chung
+
+Nhóm trưởng là người tích hợp và chịu trách nhiệm chính đối với:
+
+- `apps/web/src/App.tsx`
+- `apps/api/src/app.ts`
+- `apps/api/src/server.ts`
+- `apps/api/prisma/schema.prisma`
+- `apps/api/prisma/migrations/`
+- Cấu hình môi trường và cấu hình dùng chung
+- `package.json` gốc, `package-lock.json` và cấu hình CI
+
+Các thành viên được đề xuất thay đổi, nhưng phải trao đổi và thống nhất trước khi sửa các file này.
+
+## 4. Quy tắc API
+
+- Mỗi API có một thành viên chịu trách nhiệm chính.
+- Frontend gọi API thông qua file trong `services/`.
+- Không tự ý đổi URL, tên trường dữ liệu hoặc định dạng response mà chưa thông báo cho bên đang sử dụng API.
+- API phải kiểm tra dữ liệu đầu vào và quyền truy cập ở backend.
+- Các chức năng dùng chung dữ liệu sản phẩm, tài khoản và đơn hàng phải thống nhất kiểu dữ liệu trước khi triển khai.
+
+## 5. Quy tắc Git
+
+- Không commit trực tiếp lên `main`.
+- Mỗi thành viên làm việc trên nhánh riêng.
+- Đặt tên nhánh theo chức năng, ví dụ `feature/products`, `feature/auth`.
+- Commit chỉ bao gồm những file thuộc phần công việc của mình.
+- Tạo Pull Request để nhóm trưởng kiểm tra trước khi hợp nhất.
+- Không tự ý giải quyết xung đột bằng cách xóa code của thành viên khác.
+
+## 6. Điều kiện bàn giao
+
+Một chức năng chỉ được xem là hoàn thành khi:
+
+1. Giao diện hoạt động.
+2. API hoạt động và kết nối database đúng.
+3. Dữ liệu đầu vào được kiểm tra.
+4. Có xử lý lỗi và thông báo phù hợp.
+5. Không làm hỏng chức năng đã hoàn thành của thành viên khác.
+6. Build và các bước kiểm tra tự động đều đạt.
