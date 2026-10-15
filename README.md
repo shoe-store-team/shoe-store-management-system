@@ -110,7 +110,6 @@ shoe-store/
         └── package.json
 ```
 
-*Đây là cấu trúc định hướng. Không tự tạo lại những file đã tồn tại hoặc di chuyển file nếu chưa thống nhất với nhóm.*
 
 ### Vai trò các thư mục chính
 
