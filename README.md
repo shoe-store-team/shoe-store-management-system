@@ -56,7 +56,7 @@ Phạm vi triển khai cuối cùng sẽ căn cứ vào yêu cầu đồ án và
 - **Git và GitHub:** Quản lý mã nguồn, phân nhánh và hợp nhất code.
 - **npm:** Cài đặt và quản lý thư viện.
 - **GitHub Actions:** Tự động kiểm tra mã nguồn khi push hoặc tạo Pull Request.
-- **PostgreSQL:** Có thể chạy trực tiếp trên máy hoặc trong Docker, tùy cấu hình nhóm thống nhất.
+- **PostgreSQL:** Có thể chạy trực tiếp trên máy
 
 > **Lưu ý:** GitHub Actions hiện được sử dụng cho CI (Continuous Integration), tức kiểm tra tự động. Chỉ gọi là CI/CD khi dự án có thêm quy trình triển khai tự động phù hợp.
 
