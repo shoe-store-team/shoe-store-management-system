@@ -1,6 +1,8 @@
 node_modules/
 dist/
+**/dist/
 .env
+**/.env
 *.log
 repomix-output*.md
 .DS_Store
