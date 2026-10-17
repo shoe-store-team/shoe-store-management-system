@@ -39,10 +39,8 @@ jobs:
         with:
           node-version: 20
 
-      - name: Xóa file lock cũ và cài đặt dependencies Backend
-        run: |
-          rm -f package-lock.json ../../package-lock.json
-          npm install --no-package-lock
+      - name: Cài đặt dependencies Backend
+        run: npm install
 
       - name: Khởi tạo Prisma Client
         run: npx prisma generate
@@ -76,10 +74,8 @@ jobs:
         with:
           node-version: 20
 
-      - name: Xóa file lock cũ và cài đặt dependencies Frontend
-        run: |
-          rm -f package-lock.json ../../package-lock.json
-          npm install --no-package-lock
+      - name: Cài đặt dependencies Frontend
+        run: npm install
 
       - name: Chạy kiểm tra ESLint
         run: npm run lint
