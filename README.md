@@ -109,6 +109,7 @@ shoe-store/
         │   └── main.tsx
         ├── .env
         └── package.json
+```
 
 
 ### Vai trò các thư mục chính
