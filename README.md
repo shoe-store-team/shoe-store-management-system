@@ -53,10 +53,10 @@ Phạm vi triển khai cuối cùng sẽ căn cứ vào yêu cầu đồ án và
 
 ### 2.3. Công cụ phát triển
 
+- **Docker & Docker Compose:** Đóng gói và chạy cơ sở dữ liệu PostgreSQL đồng nhất giữa các thành viên, không cần cài đặt thủ công vào hệ điều hành host.
 - **Git và GitHub:** Quản lý mã nguồn, phân nhánh và hợp nhất code.
 - **npm:** Cài đặt và quản lý thư viện.
-- **GitHub Actions:** Tự động kiểm tra mã nguồn khi push hoặc tạo Pull Request.
-- **PostgreSQL:** Có thể chạy trực tiếp trên máy
+- **GitHub Actions:** Tự động kiểm tra mã nguồn (CI) khi push hoặc tạo Pull Request.
 
 > **Lưu ý:** GitHub Actions hiện được sử dụng cho CI (Continuous Integration), tức kiểm tra tự động. Chỉ gọi là CI/CD khi dự án có thêm quy trình triển khai tự động phù hợp.
 
@@ -69,6 +69,7 @@ shoe-store/
 │       └── ci.yml
 ├── .gitignore
 ├── .npmrc
+├── docker-compose.yml     # Khởi chạy dịch vụ PostgreSQL cục bộ bằng Docker
 ├── package.json
 ├── package-lock.json
 ├── README.md
@@ -108,7 +109,6 @@ shoe-store/
         │   └── main.tsx
         ├── .env
         └── package.json
-```
 
 
 ### Vai trò các thư mục chính
@@ -159,6 +159,7 @@ Một số file ảnh hưởng đến toàn hệ thống nên cần được ki�
 
 | File hoặc khu vực | Người phụ trách chính | Quy định |
 |---|---|---|
+| `docker-compose.yml` | Người 1 điều phối | Cấu hình dịch vụ Docker; không tự ý đổi cổng và biến môi trường DB |
 | `apps/web/src/App.tsx` | Người 1 | Quản lý route frontend và tích hợp trang |
 | `apps/api/src/app.ts` | Người 1 | Đăng ký các route backend |
 | `apps/api/src/server.ts` | Người 1 | Quản lý khởi động server và cổng chạy |
@@ -270,7 +271,6 @@ fix(orders): validate order status
 ```
 
 **Lưu ý:** Nhóm cần thống nhất rõ nhánh tích hợp là `dev` hay `main`. Không mặc định merge tất cả Pull Request vào `main` nếu nhóm đang sử dụng `dev` để tích hợp.
-
 ## ⚙️ 8. Cài đặt và chạy dự án
 
 ### 8.1. Yêu cầu môi trường
@@ -278,45 +278,60 @@ fix(orders): validate order status
 Cần cài đặt:
 
 - Node.js và npm tương thích với dự án.
-- PostgreSQL đang chạy và có database dành cho dự án.
+- Docker Desktop đang chạy (dùng để khởi chạy PostgreSQL).
 - Git.
-- Các thư viện được khai báo trong `package.json`.
+- Các thư viện được khai báo trong `package.json`[cite: 1].
 
 Có thể kiểm tra môi trường bằng:
 
 ```bash
 node -v
 npm -v
+docker -v
 git --version
 ```
 
-Nếu dùng PostgreSQL cài trực tiếp trên máy, cần biết host, port, tên database, username và password đã cấu hình. Không bắt buộc phải sử dụng Docker nếu PostgreSQL đã chạy ổn định theo cách này.
+Nếu dùng PostgreSQL cài trực tiếp trên máy thay vì Docker, cần biết host, port, tên database, username và password đã cấu hình.
 
 ### 8.2. Cài đặt thư viện
 
-Tại thư mục gốc dự án:
+Cài đặt dependencies cho từng ứng dụng:
 
 ```bash
+# Cài đặt cho Backend
+cd apps/api
+npm install
+
+# Cài đặt cho Frontend
+cd ../web
 npm install
 ```
 
-Nếu repository đã có `package-lock.json` và cấu hình hỗ trợ cài đặt từ lockfile, có thể sử dụng `npm ci` để cài đặt theo đúng phiên bản đã khóa.
+Nếu repository đã có `package-lock.json` và cấu hình hỗ trợ cài đặt từ lockfile, có thể sử dụng `npm ci` để cài đặt theo đúng phiên bản đã khóa[cite: 1].
 
-Nếu dự án quản lý package riêng trong từng ứng dụng, hãy thực hiện theo các script và cấu hình thực tế trong `package.json` của repository.
+### 8.3. Khởi chạy Database bằng Docker
 
-### 8.3. Cấu hình môi trường
+Tại thư mục gốc dự án, bật container PostgreSQL:
 
-Backend cần cấu hình thông tin kết nối database và các biến bí mật trong file `.env` của ứng dụng API.
+```bash
+docker compose up -d
+```
 
-Ví dụ minh họa:
+Lệnh này sẽ tải image PostgreSQL và chạy ngầm service cơ sở dữ liệu trên cổng `5432`. Dữ liệu được lưu vào volume `postgres_data` để không bị mất khi tắt máy.
+
+### 8.4. Cấu hình môi trường
+
+Backend cần cấu hình thông tin kết nối database và các biến bí mật trong file `.env` của ứng dụng API[cite: 1].
+
+Ví dụ minh họa khi dùng Docker PostgreSQL:
 
 ```env
-DATABASE_URL="postgresql://USER:PASSWORD@localhost:5432/shoe_store?schema=public"
+DATABASE_URL="postgresql://postgres:password123@localhost:5432/shoe_store?schema=public"
 JWT_SECRET="replace-with-a-long-random-secret"
 PORT=3000
 ```
 
-Thay `USER`, `PASSWORD`, tên database và port bằng thông tin PostgreSQL thực tế của máy.
+Nếu dùng PostgreSQL cài trực tiếp trên máy thật, thay `postgres`, `password123`, tên database và port bằng thông tin PostgreSQL thực tế của máy.
 
 Frontend có thể cần biến môi trường để xác định địa chỉ API, ví dụ:
 
@@ -326,31 +341,32 @@ VITE_API_URL=http://localhost:3000/api
 
 Tên biến và cách đọc biến môi trường phải khớp với code hiện tại. Với Vite, các biến đưa vào frontend thường có tiền tố `VITE_`; không đặt mật khẩu database hoặc JWT secret trong biến môi trường frontend.
 
-File `.env` chứa thông tin riêng của từng máy không được commit lên GitHub. Nhóm nên cung cấp file `.env.example` chỉ chứa giá trị mẫu không nhạy cảm.
+File `.env` chứa thông tin riêng của từng máy không được commit lên GitHub[cite: 1]. Nhóm nên cung cấp file `.env.example` chỉ chứa giá trị mẫu không nhạy cảm[cite: 1].
 
-### 8.4. Khởi tạo database
+### 8.5. Khởi tạo database
 
-Sau khi tạo database PostgreSQL và cấu hình `DATABASE_URL`:
+Sau khi khởi chạy PostgreSQL (bằng Docker hoặc dịch vụ máy host) và cấu hình `DATABASE_URL`[cite: 1]:
 
-1. Kiểm tra `schema.prisma` có cấu hình tương thích với phiên bản Prisma của dự án.
-2. Cài đặt/generate Prisma Client theo script đã cấu hình.
-3. Áp dụng các migration của dự án lên database phát triển.
-4. Chạy seed nếu dự án có dữ liệu mẫu.
-5. Kiểm tra database trước khi khởi chạy backend.
+1. Kiểm tra `schema.prisma` có cấu hình tương thích với phiên bản Prisma của dự án[cite: 1].
+2. Cài đặt/generate Prisma Client theo script đã cấu hình[cite: 1].
+3. Áp dụng schema hoặc migration của dự án lên database phát triển[cite: 1].
+4. Chạy seed nếu dự án có dữ liệu mẫu[cite: 1].
+5. Kiểm tra database trước khi khởi chạy backend[cite: 1].
 
-Các lệnh Prisma thường dùng trong môi trường phát triển:
+Các lệnh Prisma thường dùng trong thư mục `apps/api`:
 
 ```bash
+cd apps/api
 npx prisma generate
-npx prisma migrate dev
-npx prisma db seed
+npx prisma db push
+npm run seed
 ```
 
-Các lệnh trên là ví dụ phổ biến; cần chạy từ đúng thư mục ứng dụng API và kiểm tra `package.json`, phiên bản Prisma cũng như cấu hình seed của repository trước khi sử dụng. Không chạy migration mới một cách tùy tiện nếu nhóm đã có migration được chia sẻ.
+Không chạy migration mới một cách tùy tiện nếu nhóm đã có migration được chia sẻ.
 
-### 8.5. Khởi chạy ứng dụng
+### 8.6. Khởi chạy ứng dụng
 
-Chạy backend và frontend trong hai terminal riêng.
+Chạy backend và frontend trong hai terminal riêng[cite: 1].
 
 **Terminal 1 — Backend**
 
@@ -366,9 +382,18 @@ cd apps/web
 npm run dev
 ```
 
-Các lệnh trên giả định mỗi ứng dụng đã khai báo script `dev`. Nếu script thực tế khác, hãy dùng lệnh tương ứng trong `package.json`.
+Các lệnh trên giả định mỗi ứng dụng đã khai báo script `dev`[cite: 1]. Nếu script thực tế khác, hãy dùng lệnh tương ứng trong `package.json`[cite: 1].
 
-Sau khi khởi chạy, mở địa chỉ local mà Vite thông báo trong terminal. Đảm bảo backend đang chạy, database kết nối thành công và frontend trỏ đúng địa chỉ API.
+Sau khi khởi chạy, mở địa chỉ local mà Vite thông báo trong terminal. Đảm bảo backend đang chạy, database kết nối thành công và frontend trỏ đúng địa chỉ API[cite: 1].
+
+---
+
+### Một số lệnh Docker hữu ích khi làm việc
+
+- **Tắt database:** `docker compose down`
+- **Xem trạng thái container:** `docker compose ps`
+- **Xem log database:** `docker compose logs -f postgres`
+- **Reset toàn bộ database (xóa cả volume để làm mới dữ liệu):** `docker compose down -v`
 
 ## 🧪 9. Kiểm thử và kiểm tra chất lượng
 
