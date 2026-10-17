@@ -1,10 +1,11 @@
+
 name: CI Checks
 
 on:
   push:
-    branches: [ main, dev ]
+    branches: [main, dev]
   pull_request:
-    branches: [ main, dev ]
+    branches: [main, dev]
 
 jobs:
   check-api:
@@ -21,15 +22,11 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U postgres -d shoe_store_test"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
 
-    defaults:
-      run:
-        working-directory: apps/api
-
     steps:
       - name: Checkout mã nguồn
         uses: actions/checkout@v4
@@ -39,31 +36,28 @@ jobs:
         with:
           node-version: 20
 
-      - name: Cài đặt dependencies Backend
+      - name: Cài đặt dependencies
         run: npm install
 
       - name: Khởi tạo Prisma Client
-        run: npx prisma generate
+        run: npm --workspace=apps/api exec -- prisma generate
 
-      - name: Đồng bộ schema vào PostgreSQL Container
-        run: npx prisma db push
+      - name: Đồng bộ schema PostgreSQL
+        run: npm --workspace=apps/api exec -- prisma db push
         env:
-          DATABASE_URL: "postgresql://postgres:password123@localhost:5432/shoe_store_test?schema=public"
+          DATABASE_URL: postgresql://postgres:password123@localhost:5432/shoe_store_test?schema=public
 
-      - name: Kiểm tra chạy Seed dữ liệu mẫu
-        run: npm run seed
+      - name: Kiểm tra Seed dữ liệu
+        run: npm --workspace=apps/api run seed
         env:
-          DATABASE_URL: "postgresql://postgres:password123@localhost:5432/shoe_store_test?schema=public"
+          DATABASE_URL: postgresql://postgres:password123@localhost:5432/shoe_store_test?schema=public
 
-      - name: Kiểm tra TypeScript Build Backend
-        run: npm run build
+      - name: Build Backend
+        run: npm --workspace=apps/api run build
 
   check-web:
     name: Lint & Build Web (Frontend)
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/web
 
     steps:
       - name: Checkout mã nguồn
@@ -74,11 +68,11 @@ jobs:
         with:
           node-version: 20
 
-      - name: Cài đặt dependencies Frontend
+      - name: Cài đặt dependencies
         run: npm install
 
-      - name: Chạy kiểm tra ESLint
-        run: npm run lint
+      - name: Chạy ESLint
+        run: npm --workspace=apps/web run lint
 
-      - name: Kiểm tra TypeScript & Vite Build Frontend
-        run: npm run build
+      - name: Build Frontend
+        run: npm --workspace=apps/web run build
