@@ -1,60 +1,78 @@
+
 name: CI Checks
 
 on:
   push:
-    branches: [ main, dev ]
+    branches: [main, dev]
   pull_request:
-    branches: [ main, dev ]
+    branches: [main, dev]
 
 jobs:
   check-api:
+    name: Test & Build API (Backend)
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/api
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password123
+          POSTGRES_DB: shoe_store_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d shoe_store_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
-      - name: Checkout code
+      - name: Checkout mã nguồn
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Cài đặt Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: 'npm'
-          cache-dependency-path: apps/api/package-lock.json
+          node-version: 24
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Cài đặt dependencies
+        run: npm install
 
-      - name: Generate Prisma Client
-        run: npx prisma generate
+      - name: Khởi tạo Prisma Client
+        run: npm --workspace=apps/api exec -- prisma generate
+
+      - name: Đồng bộ schema PostgreSQL
+        run: npm --workspace=apps/api exec -- prisma db push
         env:
-          DATABASE_URL: "postgresql://dummy:dummy@localhost:5432/dummy"
+          DATABASE_URL: postgresql://postgres:password123@localhost:5432/shoe_store_test?schema=public
 
-      - name: Check TypeScript build
-        run: npm run build
+      - name: Kiểm tra Seed dữ liệu
+        run: npm --workspace=apps/api run seed
+        env:
+          DATABASE_URL: postgresql://postgres:password123@localhost:5432/shoe_store_test?schema=public
+
+      - name: Build Backend
+        run: npm --workspace=apps/api run build
 
   check-web:
+    name: Lint & Build Web (Frontend)
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/web
+
     steps:
-      - name: Checkout code
+      - name: Checkout mã nguồn
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Cài đặt Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: 'npm'
-          cache-dependency-path: apps/web/package-lock.json
+          node-version: 24
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Cài đặt dependencies
+        run: npm install
 
-      - name: Run ESLint
-        run: npm run lint
+      - name: Chạy ESLint
+        run: npm --workspace=apps/web run lint
 
-      - name: Check TypeScript & Vite build
-        run: npm run build
+      - name: Build Frontend
+        run: npm --workspace=apps/web run build
