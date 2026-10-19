@@ -1,29 +1,38 @@
- 
 # 👟 SHOE STORE MANAGEMENT SYSTEM
 
 Website thương mại điện tử bán giày dép kết hợp hệ thống quản lý cửa hàng, được phát triển bởi nhóm 6 thành viên.
 
-Dự án áp dụng mô hình **Fullstack Monorepo**, trong đó frontend và backend được quản lý chung trong một repository nhưng được chia thành các thư mục riêng biệt. Các thành viên phụ trách từng chức năng từ giao diện, xử lý nghiệp vụ đến kết nối cơ sở dữ liệu.
+Dự án sử dụng mô hình **Fullstack Monorepo**: frontend và backend nằm trong cùng một repository, được chia thành các workspace riêng biệt. Hệ thống sử dụng PostgreSQL để lưu trữ dữ liệu, Prisma ORM để truy vấn database và GitHub Actions để tự động kiểm tra mã nguồn.
 
 ## 📌 1. Mục tiêu dự án
 
-Hệ thống hướng đến hai nhóm người dùng chính:
+Xây dựng website bán giày dép có các chức năng phục vụ khách hàng và quản trị viên.
 
-**Khách hàng**
-- Xem danh sách và chi tiết sản phẩm.
-- Tìm kiếm, lọc sản phẩm theo các tiêu chí phù hợp.
-- Quản lý giỏ hàng và đặt hàng.
-- Đăng ký, đăng nhập và quản lý thông tin cá nhân.
-- Quản lý địa chỉ nhận hàng.
-- Xem lịch sử mua hàng và trạng thái đơn hàng.
+### 1.1. Chức năng dành cho khách hàng
 
-**Quản trị viên**
-- Quản lý sản phẩm, danh mục, kích cỡ, màu sắc và tồn kho.
-- Quản lý và cập nhật trạng thái đơn hàng.
-- Theo dõi doanh thu và thống kê bán hàng.
-- Quản lý quyền truy cập theo vai trò người dùng.
+- Đăng ký, đăng nhập và đăng xuất.
+- Xem danh sách, chi tiết sản phẩm.
+- Tìm kiếm, lọc sản phẩm theo danh mục và các tiêu chí phù hợp.
+- Xem kích cỡ, màu sắc, biến thể, giá bán và tình trạng tồn kho.
+- Thêm, sửa số lượng và xóa sản phẩm trong giỏ hàng.
+- Quản lý thông tin cá nhân.
+- Thêm, sửa, xóa và lựa chọn nhiều địa chỉ giao hàng.
+- Áp dụng mã khuyến mãi và kiểm tra điều kiện sử dụng.
+- Đặt hàng, chọn địa chỉ nhận hàng và phương thức thanh toán.
+- Thanh toán trực tuyến thông qua cổng thanh toán hoặc môi trường sandbox.
+- Xem lịch sử mua hàng, chi tiết đơn hàng và trạng thái xử lý.
 
-Phạm vi triển khai cuối cùng sẽ căn cứ vào yêu cầu đồ án và tiến độ thực tế của nhóm.
+### 1.2. Chức năng dành cho quản trị viên
+
+- Quản lý sản phẩm, danh mục, kích cỡ, màu sắc và biến thể.
+- Quản lý giá bán và tồn kho.
+- Quản lý khuyến mãi, mã giảm giá, thời hạn và điều kiện áp dụng.
+- Quản lý đơn hàng và cập nhật trạng thái theo quy trình nghiệp vụ.
+- Theo dõi kết quả thanh toán.
+- Xem thống kê doanh thu và tình hình bán hàng.
+- Quản lý tài khoản, vai trò và quyền truy cập theo phạm vi được phân công.
+
+Các chức năng trên là phạm vi mục tiêu của đồ án. Chức năng nào đã triển khai đến đâu cần được xác nhận qua code và kết quả kiểm thử thực tế.
 
 ## 🛠️ 2. Công nghệ sử dụng
 
@@ -32,11 +41,13 @@ Phạm vi triển khai cuối cùng sẽ căn cứ vào yêu cầu đồ án và
 | Công nghệ | Vai trò |
 |---|---|
 | React 19 | Xây dựng giao diện người dùng |
-| Vite 8 | Khởi chạy môi trường phát triển và build ứng dụng |
-| TypeScript | Kiểm tra kiểu dữ liệu và hỗ trợ phát triển |
+| Vite 8 | Chạy môi trường phát triển và build frontend |
+| TypeScript | Kiểm tra kiểu dữ liệu |
 | React Router DOM | Điều hướng giữa các trang |
 | Fetch API | Gửi HTTP request đến backend |
 | ESLint | Kiểm tra các vấn đề trong mã nguồn |
+
+Phiên bản Vite và plugin React được quản lý bằng `apps/web/package.json` và `package-lock.json`. Khi thay đổi dependency, cần đồng bộ lockfile và kiểm tra lại build.
 
 ### 2.2. Backend
 
@@ -45,22 +56,25 @@ Phạm vi triển khai cuối cùng sẽ căn cứ vào yêu cầu đồ án và
 | Node.js | Môi trường chạy JavaScript phía máy chủ |
 | Express 5 | Xây dựng REST API |
 | TypeScript | Kiểm tra kiểu dữ liệu phía backend |
-| PostgreSQL | Lưu trữ dữ liệu hệ thống |
-| Prisma ORM 6.19.3 | Truy vấn database và quản lý schema, migration |
-| JSON Web Token (JWT) | Xác thực người dùng |
-| bcryptjs | Băm mật khẩu trước khi lưu |
-| CORS | Cấu hình quyền truy cập API giữa các origin |
+| PostgreSQL | Lưu trữ dữ liệu |
+| Prisma ORM 6.19.3 | Truy vấn database và quản lý schema |
+| JSON Web Token (JWT) | Hỗ trợ xác thực người dùng |
+| bcryptjs | Băm mật khẩu |
+| CORS | Cấu hình truy cập API giữa các origin |
 
 ### 2.3. Công cụ phát triển
 
-- **Docker & Docker Compose:** Đóng gói và chạy cơ sở dữ liệu PostgreSQL đồng nhất giữa các thành viên, không cần cài đặt thủ công vào hệ điều hành host.
-- **Git và GitHub:** Quản lý mã nguồn, phân nhánh và hợp nhất code.
-- **npm:** Cài đặt và quản lý thư viện.
-- **GitHub Actions:** Tự động kiểm tra mã nguồn (CI) khi push hoặc tạo Pull Request.
+- **npm Workspaces:** Quản lý frontend và backend trong một monorepo.
+- **Docker và Docker Compose:** Khởi chạy PostgreSQL trong môi trường phát triển.
+- **Git và GitHub:** Quản lý mã nguồn, branch, Pull Request và review.
+- **GitHub Actions:** Tự động kiểm tra dependency, build và các bước đã cấu hình trong CI.
+- **Prisma CLI:** Generate Prisma Client, đồng bộ schema hoặc áp dụng migration và chạy seed.
 
-> **Lưu ý:** GitHub Actions hiện được sử dụng cho CI (Continuous Integration), tức kiểm tra tự động. Chỉ gọi là CI/CD khi dự án có thêm quy trình triển khai tự động phù hợp.
+> GitHub Actions hiện được sử dụng cho CI. Chỉ gọi là CI/CD khi dự án có thêm quy trình triển khai tự động tương ứng.
 
-## 📂 3. Cấu trúc thư mục dự án
+## 📂 3. Cấu trúc thư mục
+
+Cấu trúc dưới đây thể hiện các khu vực chính của dự án. Khi bổ sung module hoặc file mới, cần cập nhật README theo cấu trúc thực tế trong repository.
 
 ```text
 shoe-store/
@@ -69,7 +83,7 @@ shoe-store/
 │       └── ci.yml
 ├── .gitignore
 ├── .npmrc
-├── docker-compose.yml     # Khởi chạy dịch vụ PostgreSQL cục bộ bằng Docker
+├── docker-compose.yml
 ├── package.json
 ├── package-lock.json
 ├── README.md
@@ -97,234 +111,263 @@ shoe-store/
         ├── src/
         │   ├── components/
         │   ├── pages/
-        │   │   ├── auth/
-        │   │   ├── admin-products/
-        │   │   ├── catalog/
-        │   │   ├── checkout/
-        │   │   ├── admin-orders/
-        │   │   └── customer/
         │   ├── services/
         │   ├── types/
         │   ├── App.tsx
         │   └── main.tsx
-        ├── .env
         └── package.json
 ```
 
+### Vai trò các thư mục
 
-### Vai trò các thư mục chính
-
-| Thư mục | Chức năng |
+| Đường dẫn | Chức năng |
 |---|---|
-| `apps/web/src/pages/` | Các trang giao diện theo chức năng |
-| `apps/web/src/components/` | Các thành phần giao diện dùng chung |
-| `apps/web/src/services/` | Các hàm gọi API |
-| `apps/web/src/types/` | Các kiểu dữ liệu TypeScript dùng ở frontend |
-| `apps/api/src/modules/` | Các module xử lý nghiệp vụ và API |
-| `apps/api/src/config/` | Cấu hình kết nối và các cấu hình dùng chung |
-| `apps/api/prisma/schema.prisma` | Khai báo cấu trúc dữ liệu |
+| `apps/web/src/pages/` | Các trang giao diện |
+| `apps/web/src/components/` | Thành phần giao diện dùng chung |
+| `apps/web/src/services/` | Hàm giao tiếp với backend |
+| `apps/web/src/types/` | Kiểu dữ liệu phía frontend |
+| `apps/api/src/modules/` | Các module nghiệp vụ và API |
+| `apps/api/src/config/` | Cấu hình dùng chung, bao gồm Prisma Client |
+| `apps/api/prisma/schema.prisma` | Định nghĩa model và quan hệ dữ liệu |
 | `apps/api/prisma/migrations/` | Lịch sử thay đổi cấu trúc database |
-| `apps/api/prisma/seed.ts` | Dữ liệu mẫu phục vụ phát triển và kiểm thử |
+| `apps/api/prisma/seed.ts` | Khởi tạo dữ liệu phục vụ phát triển và kiểm thử |
+| `package.json` | Cấu hình workspace và script ở cấp repository |
+| `package-lock.json` | Khóa dependency cho các workspace |
+| `.github/workflows/ci.yml` | Quy trình kiểm tra tự động trên GitHub Actions |
 
-## 👥 4. Phân công công việc cho 6 thành viên
+## 👥 4. Phân công công việc
 
-Mỗi thành viên chịu trách nhiệm chính cho một nhóm chức năng, bao gồm frontend, backend và kiểm thử chức năng được giao.
+Nhóm gồm 6 thành viên. Mỗi thành viên chịu trách nhiệm chính cho một nhóm chức năng và phối hợp với các thành viên liên quan khi cần thay đổi API hoặc database.
 
-| Thành viên | Chức năng | Frontend | Backend |
-|---|---|---|---|
-| **Người 1 — Nhóm trưởng** | Đăng ký, đăng nhập, phân quyền và tích hợp | `pages/auth/`, `services/authService.ts`, `types/auth.ts` | `modules/auth/` |
-| **Người 2** | Quản lý sản phẩm, biến thể và tồn kho | `pages/admin-products/`, `services/productService.ts`, `types/product.ts` | `modules/products/` |
-| **Người 3** | Trang chủ, danh mục, tìm kiếm, lọc và chi tiết sản phẩm | `pages/catalog/`, `services/catalogService.ts`, `types/catalog.ts` | `modules/catalog/` |
-| **Người 4** | Giỏ hàng, kiểm tra tồn kho và tạo đơn hàng | `pages/checkout/`, `services/cartService.ts`, `types/cart.ts` | `modules/cart/` và phần tạo đơn đã thống nhất |
-| **Người 5** | Quản lý đơn hàng, cập nhật trạng thái và thống kê doanh thu | `pages/admin-orders/`, `services/orderService.ts`, `types/order.ts` | `modules/orders/` |
-| **Người 6** | Hồ sơ, địa chỉ nhận hàng và lịch sử mua hàng | `pages/customer/`, `services/customerService.ts`, `types/customer.ts` | `modules/customer/` |
+| Thành viên | Phạm vi phụ trách chính |
+|---|---|
+| **Người 1 — Nhóm trưởng** | Tích hợp hệ thống, Git/PR, cấu hình chung, quản lý sản phẩm và điều phối database |
+| **Người 2** | Đăng ký, đăng nhập, phân quyền, hồ sơ và nhiều địa chỉ giao hàng |
+| **Người 3** | Danh mục, tìm kiếm, chi tiết sản phẩm, giỏ hàng và khuyến mãi |
+| **Người 4** | Checkout, tạo đơn hàng và quy trình xử lý đơn |
+| **Người 5** | Quản lý biến thể, tồn kho và đồng bộ số lượng hàng |
+| **Người 6** | Thanh toán trực tuyến sandbox, theo dõi kết quả thanh toán và thống kê theo phạm vi được thống nhất |
 
-### 4.1. Trách nhiệm của từng thành viên
+### Nguyên tắc phân công
 
-**Người 1 — Nhóm trưởng**
-- Phụ trách chức năng xác thực và phân quyền.
-- Duy trì cấu trúc chung, tích hợp các route và kiểm tra toàn hệ thống.
-- Tổng hợp đề xuất thay đổi database từ các thành viên.
-- Quản lý những file dùng chung theo quy ước tại mục 5.
-- Không phải tự viết toàn bộ chức năng của các thành viên khác.
-
-**Người 2 đến Người 6**
-- Phát triển chức năng được giao trong thư mục phụ trách.
-- Thống nhất kiểu dữ liệu, API và quan hệ database với các thành viên liên quan.
-- Tự kiểm thử chức năng trước khi tạo Pull Request.
-- Thông báo sớm nếu cần thay đổi file dùng chung hoặc ảnh hưởng đến chức năng khác.
+- Người phụ trách chính chịu trách nhiệm triển khai, tự kiểm thử và bàn giao chức năng.
+- Nhóm trưởng quản lý tích hợp và hỗ trợ giải quyết xung đột, không phải tự viết toàn bộ code của các thành viên.
+- Các chức năng giao nhau như giỏ hàng, tồn kho, khuyến mãi, checkout và thanh toán phải thống nhất nghiệp vụ trước khi triển khai.
+- Phân công cụ thể frontend, backend và database nên được quản lý bằng các thẻ Trello để tránh trùng việc.
 
 ## 🗃️ 5. Quy định quản lý file dùng chung
 
-Một số file ảnh hưởng đến toàn hệ thống nên cần được kiểm soát chặt chẽ để tránh xung đột.
+Các file dùng chung có thể ảnh hưởng đến nhiều chức năng, vì vậy cần thống nhất trước khi thay đổi.
 
-| File hoặc khu vực | Người phụ trách chính | Quy định |
+| File hoặc khu vực | Người điều phối | Quy định |
 |---|---|---|
-| `docker-compose.yml` | Người 1 điều phối | Cấu hình dịch vụ Docker; không tự ý đổi cổng và biến môi trường DB |
-| `apps/web/src/App.tsx` | Người 1 | Quản lý route frontend và tích hợp trang |
-| `apps/api/src/app.ts` | Người 1 | Đăng ký các route backend |
+| `docker-compose.yml` | Người 1 | Thống nhất tên service, cổng và cấu hình database |
+| `apps/web/src/App.tsx` | Người 1 | Điều phối route và tích hợp trang |
+| `apps/api/src/app.ts` | Người 1 | Đăng ký middleware và route |
 | `apps/api/src/server.ts` | Người 1 | Quản lý khởi động server và cổng chạy |
-| `apps/api/prisma/schema.prisma` | Người 1 điều phối | Các thành viên đề xuất trường dữ liệu; thống nhất trước khi sửa |
-| `apps/api/prisma/migrations/` | Người 1 điều phối | Thống nhất và kiểm soát việc tạo, áp dụng migration |
-| `apps/api/prisma/seed.ts` | Người 1 điều phối | Tổng hợp dữ liệu mẫu theo schema đã thống nhất |
-| Cấu hình môi trường | Người 1 điều phối | Không tự ý đổi tên biến môi trường dùng chung |
-| `package.json`, lockfile và CI | Người 1 điều phối | Thống nhất khi thay đổi thư viện hoặc script |
-| `apps/web/src/components/` | Người được nhóm giao | Thành phần dùng chung phải trao đổi trước khi thay đổi giao diện hoặc API props |
+| `apps/api/prisma/schema.prisma` | Người 1 điều phối | Thống nhất model, trường dữ liệu và quan hệ |
+| `apps/api/prisma/migrations/` | Người được nhóm giao | Kiểm soát lịch sử thay đổi database |
+| `apps/api/prisma/seed.ts` | Người 1 điều phối | Đồng bộ dữ liệu khởi tạo với schema |
+| `package.json`, `package-lock.json` | Người 1 điều phối | Kiểm soát dependency và script dùng chung |
+| `.github/workflows/ci.yml` | Người 1 điều phối | Duy trì quy trình CI |
+| `.env.example` | Các thành viên phối hợp | Thống nhất tên biến môi trường, không chứa bí mật thật |
 
 ### Quy trình thay đổi database
 
-1. Thành viên xác định dữ liệu mà chức năng của mình cần.
-2. Gửi đề xuất tên bảng, trường dữ liệu, kiểu dữ liệu, quan hệ và ràng buộc cho nhóm trưởng.
-3. Nhóm thống nhất thiết kế database trước khi code phụ thuộc vào dữ liệu đó.
-4. Người được phân công thực hiện thay đổi `schema.prisma` và tạo migration.
-5. Chạy migration trên database phát triển, kiểm tra các chức năng bị ảnh hưởng.
-6. Đưa các thay đổi liên quan vào Pull Request để nhóm kiểm tra.
+1. Thành viên xác định nhu cầu dữ liệu từ nghiệp vụ.
+2. Đề xuất model, trường dữ liệu, kiểu dữ liệu, quan hệ và ràng buộc.
+3. Thống nhất với người điều phối database trước khi triển khai.
+4. Cập nhật `schema.prisma` và tạo migration theo quy ước của nhóm.
+5. Kiểm tra thay đổi trên database phát triển và các chức năng liên quan.
+6. Đưa schema, migration và code liên quan vào cùng Pull Request khi phù hợp.
 
-**Không tự ý chỉnh schema hoặc tạo nhiều migration độc lập cùng lúc.** Nếu cần thay đổi gấp, phải trao đổi với người đang quản lý database trước.
+Không tự ý thay đổi schema hoặc tạo migration xung đột với thành viên khác. Không xóa migration đã được nhóm sử dụng chỉ để xử lý lỗi cục bộ.
 
-## 🔌 6. Quy ước thiết kế API
+## 🔌 6. Quy ước API
 
-Các API sử dụng tiền tố `/api`. Mỗi nhóm chức năng có một đường dẫn gốc riêng.
+API sử dụng tiền tố `/api`. Các đường dẫn dưới đây là định hướng tổ chức, cần được đối chiếu với router và code backend trước khi sử dụng trong frontend.
 
-| Chức năng | Đường dẫn gốc | Ví dụ endpoint |
+| Chức năng | Đường dẫn định hướng | Ví dụ |
 |---|---|---|
-| Xác thực | `/api/auth` | `POST /api/auth/login`, `POST /api/auth/register` |
-| Quản lý sản phẩm | `/api/products` | `GET /api/products`, `POST /api/products` |
-| Danh mục sản phẩm | `/api/catalog` | `GET /api/catalog`, `GET /api/catalog/:id` |
-| Giỏ hàng | `/api/cart` | `GET /api/cart`, `POST /api/cart/items` |
-| Đơn hàng | `/api/orders` | `GET /api/orders`, `PATCH /api/orders/:id/status` |
-| Khách hàng | `/api/customer` | `GET /api/customer/profile`, `GET /api/customer/orders` |
+| Xác thực | `/api/auth` | `POST /api/auth/login` |
+| Sản phẩm | `/api/products` | `GET /api/products` |
+| Danh mục | `/api/catalog` | `GET /api/catalog` |
+| Giỏ hàng | `/api/cart` | `GET /api/cart` |
+| Khuyến mãi | `/api/promotions` | Kiểm tra và áp dụng mã giảm giá |
+| Đơn hàng | `/api/orders` | Tạo và truy vấn đơn hàng |
+| Khách hàng | `/api/customer` | Hồ sơ và địa chỉ giao hàng |
+| Thanh toán | Theo API contract được thống nhất | Tạo yêu cầu và xác nhận kết quả thanh toán |
 
-Đây là các endpoint định hướng. Nhóm cần thống nhất request, response và quyền truy cập trước khi frontend gọi API. Nếu dự án đã triển khai endpoint khác, hãy cập nhật bảng này theo code thực tế thay vì đổi URL hàng loạt.
+Không tự ý đổi URL, tên trường, kiểu dữ liệu hoặc định dạng response khi frontend và backend đang tích hợp.
 
-### 6.1. Quy tắc giao tiếp giữa frontend và backend
+### 6.1. Quy tắc giao tiếp frontend/backend
 
-- Frontend gọi API thông qua file trong `services/`, không viết các request rải rác trong nhiều component.
-- Các kiểu dữ liệu trao đổi được khai báo trong `types/`.
-- Không tự ý đổi URL, tên trường, kiểu dữ liệu hoặc định dạng response khi thành viên khác đang sử dụng.
-- Mỗi API cần thống nhất phương thức HTTP, tham số, dữ liệu đầu vào, dữ liệu trả về và lỗi có thể xảy ra.
-- Khi API thay đổi, người phụ trách phải thông báo cho các thành viên liên quan.
+- Frontend gọi API thông qua các file trong `services/`.
+- Kiểu dữ liệu trao đổi được khai báo trong `types/`.
+- Thống nhất phương thức HTTP, tham số, request body, response và lỗi trước khi tích hợp.
+- Backend kiểm tra dữ liệu đầu vào và quyền truy cập.
+- Khi thay đổi API contract, phải thông báo cho các thành viên bị ảnh hưởng.
 
-### 6.2. Phân biệt giỏ hàng và tạo đơn
+### 6.2. Các nghiệp vụ cần thống nhất
 
-- **Giỏ hàng:** Thêm, sửa số lượng, xóa sản phẩm và xem các mặt hàng đã chọn.
-- **Checkout:** Kiểm tra dữ liệu đặt hàng, địa chỉ nhận hàng, giá và số lượng tồn kho trước khi tạo đơn.
-- **Quản lý đơn hàng:** Xem danh sách đơn và cập nhật trạng thái theo quyền của quản trị viên.
-- **Lịch sử mua hàng:** Khách hàng chỉ được xem đơn hàng thuộc tài khoản của mình.
+**Giỏ hàng và checkout**
 
-Nếu nhóm quyết định tạo đường dẫn riêng `/api/checkout`, cần thống nhất với Người 4 và Người 5 trước khi triển khai. Không để hai module cùng xử lý việc tạo một đơn hàng theo hai cách khác nhau.
+- Giỏ hàng quản lý sản phẩm được chọn và số lượng.
+- Checkout kiểm tra lại giá, tồn kho, địa chỉ và điều kiện khuyến mãi trước khi tạo đơn.
+- Giá tiền cuối cùng phải được tính hoặc xác nhận tại backend.
 
-### 6.3. Quy tắc bảo mật và dữ liệu
+**Khuyến mãi**
 
-- Kiểm tra dữ liệu đầu vào tại backend.
+- Xác định thời hạn, điều kiện áp dụng, mức giảm và giới hạn sử dụng.
+- Backend phải kiểm tra lại mã khuyến mãi khi đặt hàng.
+- Không tin số tiền giảm giá do frontend tự gửi lên.
+
+**Tồn kho**
+
+- Kiểm tra số lượng tồn kho trước khi xác nhận đơn.
+- Thiết kế cập nhật tồn kho để hạn chế bán vượt số lượng khi có nhiều yêu cầu đồng thời.
+- Thống nhất thời điểm giữ, trừ hoặc hoàn tồn kho khi đơn hàng bị hủy.
+
+**Thanh toán trực tuyến**
+
+- Sử dụng môi trường sandbox hoặc môi trường thử nghiệm của nhà cung cấp phù hợp.
+- Không lưu thông tin bí mật thanh toán trong mã nguồn frontend.
+- Backend phải xác minh kết quả thanh toán từ nguồn đáng tin cậy.
+- Không đánh dấu đơn hàng là đã thanh toán chỉ dựa vào thông báo từ giao diện.
+- Thống nhất cách xử lý thanh toán thất bại, hủy giao dịch và thông báo lặp.
+
+### 6.3. Bảo mật
+
+- Mật khẩu phải được băm trước khi lưu.
+- JWT secret và thông tin kết nối database không được đưa lên GitHub.
 - Kiểm tra quyền truy cập ở backend, không chỉ ẩn nút trên giao diện.
-- Mật khẩu phải được băm trước khi lưu; không lưu mật khẩu dạng văn bản thuần.
-- Giá tiền và tồn kho phải được xác minh ở backend, không tin giá do frontend gửi lên.
-- Người dùng không được tự ý truy cập hồ sơ hoặc đơn hàng của tài khoản khác.
-- Việc tạo đơn và cập nhật tồn kho phải được thiết kế để hạn chế sai lệch dữ liệu khi nhiều yêu cầu xảy ra gần nhau.
-- Không đưa JWT secret, mật khẩu database hoặc thông tin bí mật vào mã nguồn công khai.
+- Người dùng chỉ được xem hoặc sửa dữ liệu thuộc phạm vi quyền của mình.
+- Kiểm tra dữ liệu đầu vào và xử lý lỗi tại backend.
+- Không tin giá, số tiền giảm hoặc tồn kho do frontend gửi lên.
 
-## 🌿 7. Quy ước Git và GitHub
+## 🌿 7. Quy trình Git và Pull Request
 
-### 7.1. Nguyên tắc làm việc
+### 7.1. Nguyên tắc
 
-- Không commit trực tiếp lên nhánh `main`.
-- Mỗi thành viên làm việc trên nhánh riêng theo chức năng.
-- Tạo Pull Request để nhóm trưởng hoặc người được phân công review.
-- Chỉ merge khi code đã được kiểm tra và không làm hỏng chức năng hiện có.
-- Không ghi đè hoặc xóa code của thành viên khác khi xử lý xung đột nếu chưa trao đổi.
+- Không làm việc trực tiếp trên `main`.
+- Không mặc định push trực tiếp lên `dev` nếu repository yêu cầu Pull Request.
+- Mỗi thành viên làm việc trên branch riêng theo chức năng.
+- Tạo Pull Request vào nhánh tích hợp đã thống nhất.
+- Chờ review và các status check bắt buộc trước khi merge.
+- Không tự ý ghi đè code của thành viên khác khi giải quyết conflict.
 
-### 7.2. Đặt tên nhánh
+### 7.2. Tên branch và commit
 
-Ví dụ:
+Ví dụ tên branch:
 
 ```text
 feature/auth
 feature/products
 feature/catalog
-feature/cart-checkout
-feature/admin-orders
-feature/customer-profile
-fix/product-validation
+feature/cart-promotion
+feature/checkout-orders
+feature/inventory
+feature/payment
+fix/rolldown-ci
 ```
-
-Tên nhánh có thể điều chỉnh theo quy ước nhóm, nhưng cần thể hiện rõ mục đích thay đổi.
-
-### 7.3. Quy trình làm việc đề xuất
-
-1. Đồng bộ nhánh nền mà nhóm đang sử dụng.
-2. Tạo nhánh riêng cho chức năng.
-3. Code và tự kiểm thử trên máy.
-4. Commit những thay đổi liên quan trực tiếp đến công việc.
-5. Push nhánh lên GitHub.
-6. Tạo Pull Request vào nhánh tích hợp mà nhóm đã thống nhất.
-7. Chờ review và sửa các vấn đề được góp ý.
-8. Chỉ merge sau khi các kiểm tra cần thiết đạt yêu cầu.
 
 Ví dụ commit:
 
 ```text
-feat(auth): add login form
+feat(auth): add login
 feat(products): add product management
 feat(catalog): add product search
-feat(cart): add cart item management
-fix(orders): validate order status
+feat(cart): add promotion support
+feat(orders): implement checkout
+feat(payment): integrate sandbox payment
+fix(ci): resolve frontend build issue
 ```
 
-**Lưu ý:** Nhóm cần thống nhất rõ nhánh tích hợp là `dev` hay `main`. Không mặc định merge tất cả Pull Request vào `main` nếu nhóm đang sử dụng `dev` để tích hợp.
+### 7.3. Quy trình làm việc
+
+1. Đồng bộ nhánh nền theo quy ước nhóm.
+2. Tạo branch riêng cho công việc.
+3. Code và kiểm thử trên máy.
+4. Chạy các lệnh kiểm tra cần thiết.
+5. Commit những thay đổi liên quan trực tiếp đến nhiệm vụ.
+6. Push branch và tạo Pull Request.
+7. Xử lý review và chờ CI.
+8. Merge theo quy định repository.
+
+Không sử dụng việc bypass branch protection như quy trình làm việc thông thường.
+
 ## ⚙️ 8. Cài đặt và chạy dự án
 
 ### 8.1. Yêu cầu môi trường
 
 Cần cài đặt:
 
-- Node.js và npm tương thích với dự án.
-- Docker Desktop đang chạy (dùng để khởi chạy PostgreSQL).
+- Node.js phiên bản 24.x theo môi trường nhóm đã thống nhất.
+- npm đi kèm hoặc phiên bản tương thích với lockfile.
 - Git.
-- Các thư viện được khai báo trong `package.json`[cite: 1].
+- Docker Desktop nếu sử dụng PostgreSQL qua Docker.
+- Các dependency được khai báo trong repository.
 
-Có thể kiểm tra môi trường bằng:
+Kiểm tra:
 
-```bash
+```powershell
 node -v
 npm -v
-docker -v
 git --version
+docker --version
+docker compose version
 ```
 
-Nếu dùng PostgreSQL cài trực tiếp trên máy thay vì Docker, cần biết host, port, tên database, username và password đã cấu hình.
+Nếu sử dụng PostgreSQL cài trực tiếp trên máy, cần bảo đảm dịch vụ PostgreSQL đang chạy và có thông tin kết nối phù hợp.
 
-### 8.2. Cài đặt thư viện
+### 8.2. Clone và cài dependency
 
-Cài đặt dependencies cho từng ứng dụng:
+Clone repository và chuyển vào thư mục dự án:
 
-```bash
-# Cài đặt cho Backend
-cd apps/api
-npm install
-
-# Cài đặt cho Frontend
-cd ../web
-npm install
+```powershell
+git clone <URL_REPOSITORY>
+cd shoe-store
 ```
 
-Nếu repository đã có `package-lock.json` và cấu hình hỗ trợ cài đặt từ lockfile, có thể sử dụng `npm ci` để cài đặt theo đúng phiên bản đã khóa[cite: 1].
+Cài dependency tại thư mục gốc:
 
-### 8.3. Khởi chạy Database bằng Docker
+```powershell
+npm ci --include=optional
+```
 
-Tại thư mục gốc dự án, bật container PostgreSQL:
+**Không cần chạy `npm install` riêng trong `apps/api` và `apps/web` theo quy trình mặc định của monorepo.** Cài từ thư mục gốc giúp npm sử dụng lockfile chung.
 
-```bash
+Nếu `npm ci` báo lỗi, cần xử lý nguyên nhân trước thay vì xóa lockfile hoặc tự ý cài các phiên bản khác nhau.
+
+### 8.3. Khởi chạy PostgreSQL
+
+Tại thư mục gốc:
+
+```powershell
 docker compose up -d
 ```
 
-Lệnh này sẽ tải image PostgreSQL và chạy ngầm service cơ sở dữ liệu trên cổng `5432`. Dữ liệu được lưu vào volume `postgres_data` để không bị mất khi tắt máy.
+Kiểm tra container:
+
+```powershell
+docker compose ps
+```
+
+Xem log nếu cần:
+
+```powershell
+docker compose logs -f
+```
+
+Cổng kết nối, tên database, username và password phải khớp với cấu hình trong `docker-compose.yml` và `DATABASE_URL`.
+
+Nếu sử dụng PostgreSQL cài trực tiếp trên máy, có thể không cần Docker. Tuy nhiên, phải bảo đảm database và thông tin kết nối tương thích với dự án.
 
 ### 8.4. Cấu hình môi trường
 
-Backend cần cấu hình thông tin kết nối database và các biến bí mật trong file `.env` của ứng dụng API[cite: 1].
+Backend cần file `apps/api/.env` với các biến phù hợp với code hiện tại.
 
-Ví dụ minh họa khi dùng Docker PostgreSQL:
+Ví dụ minh họa:
 
 ```env
 DATABASE_URL="postgresql://postgres:password123@localhost:5432/shoe_store?schema=public"
@@ -332,132 +375,163 @@ JWT_SECRET="replace-with-a-long-random-secret"
 PORT=3000
 ```
 
-Nếu dùng PostgreSQL cài trực tiếp trên máy thật, thay `postgres`, `password123`, tên database và port bằng thông tin PostgreSQL thực tế của máy.
+Đây là giá trị minh họa, không phải thông tin xác thực thật của nhóm. Cần thay bằng cấu hình thực tế.
 
-Frontend có thể cần biến môi trường để xác định địa chỉ API, ví dụ:
+Frontend có thể cần file `apps/web/.env`:
 
 ```env
 VITE_API_URL=http://localhost:3000/api
 ```
 
-Tên biến và cách đọc biến môi trường phải khớp với code hiện tại. Với Vite, các biến đưa vào frontend thường có tiền tố `VITE_`; không đặt mật khẩu database hoặc JWT secret trong biến môi trường frontend.
+Tên biến phải khớp với code frontend. Với Vite, biến môi trường được sử dụng ở frontend thường có tiền tố `VITE_`. Không đặt JWT secret hoặc mật khẩu database trong biến `VITE_`.
 
-File `.env` chứa thông tin riêng của từng máy không được commit lên GitHub[cite: 1]. Nhóm nên cung cấp file `.env.example` chỉ chứa giá trị mẫu không nhạy cảm[cite: 1].
+Nhóm cần duy trì `.env.example` cho từng ứng dụng nếu cần, chỉ chứa tên biến và giá trị mẫu không nhạy cảm. Không commit file `.env` cá nhân lên GitHub.
 
 ### 8.5. Khởi tạo database
 
-Sau khi khởi chạy PostgreSQL (bằng Docker hoặc dịch vụ máy host) và cấu hình `DATABASE_URL`[cite: 1]:
+Sau khi PostgreSQL đã chạy và `DATABASE_URL` đã được cấu hình, chuyển vào thư mục API:
 
-1. Kiểm tra `schema.prisma` có cấu hình tương thích với phiên bản Prisma của dự án[cite: 1].
-2. Cài đặt/generate Prisma Client theo script đã cấu hình[cite: 1].
-3. Áp dụng schema hoặc migration của dự án lên database phát triển[cite: 1].
-4. Chạy seed nếu dự án có dữ liệu mẫu[cite: 1].
-5. Kiểm tra database trước khi khởi chạy backend[cite: 1].
-
-Các lệnh Prisma thường dùng trong thư mục `apps/api`:
-
-```bash
+```powershell
 cd apps/api
+```
+
+Generate Prisma Client:
+
+```powershell
 npx prisma generate
+```
+
+Đối với database phát triển mới, nếu quy trình hiện tại của nhóm sử dụng `db push`:
+
+```powershell
 npx prisma db push
+```
+
+Chạy seed theo script đã khai báo trong `apps/api/package.json`:
+
+```powershell
 npm run seed
 ```
 
-Không chạy migration mới một cách tùy tiện nếu nhóm đã có migration được chia sẻ.
+> Nếu repository đã quản lý migration bằng `prisma migrate`, hãy làm theo quy trình migration của nhóm thay vì tự ý dùng `db push` để thay thế. Không chạy các lệnh xóa hoặc reset database trên dữ liệu quan trọng.
 
-### 8.6. Khởi chạy ứng dụng
+Quay lại thư mục gốc sau khi hoàn tất:
 
-Chạy backend và frontend trong hai terminal riêng[cite: 1].
+```powershell
+cd ../..
+```
+
+### 8.6. Chạy backend và frontend
+
+Mở hai terminal riêng.
 
 **Terminal 1 — Backend**
 
-```bash
-cd apps/api
-npm run dev
+```powershell
+npm --workspace=apps/api run dev
 ```
 
 **Terminal 2 — Frontend**
 
-```bash
-cd apps/web
-npm run dev
+```powershell
+npm --workspace=apps/web run dev
 ```
 
-Các lệnh trên giả định mỗi ứng dụng đã khai báo script `dev`[cite: 1]. Nếu script thực tế khác, hãy dùng lệnh tương ứng trong `package.json`[cite: 1].
+Các lệnh trên yêu cầu workspace tương ứng đã khai báo script `dev`. Nếu script trong `package.json` khác, sử dụng script thực tế của dự án.
 
-Sau khi khởi chạy, mở địa chỉ local mà Vite thông báo trong terminal. Đảm bảo backend đang chạy, database kết nối thành công và frontend trỏ đúng địa chỉ API[cite: 1].
+Mở địa chỉ local do Vite thông báo trong terminal. Nếu frontend không lấy được dữ liệu, kiểm tra backend, `VITE_API_URL`, CORS và trạng thái database.
 
----
+### 8.7. Các lệnh Docker thường dùng
 
-### Một số lệnh Docker hữu ích khi làm việc
+| Lệnh | Ý nghĩa |
+|---|---|
+| `docker compose up -d` | Khởi chạy dịch vụ ở chế độ nền |
+| `docker compose ps` | Xem trạng thái container |
+| `docker compose logs -f` | Theo dõi log |
+| `docker compose stop` | Dừng dịch vụ nhưng giữ container |
+| `docker compose down` | Dừng và xóa container của Compose |
+| `docker compose down -v` | Xóa cả volume; có thể làm mất dữ liệu database |
 
-- **Tắt database:** `docker compose down`
-- **Xem trạng thái container:** `docker compose ps`
-- **Xem log database:** `docker compose logs -f postgres`
-- **Reset toàn bộ database (xóa cả volume để làm mới dữ liệu):** `docker compose down -v`
+**Cẩn thận với `docker compose down -v`:** chỉ sử dụng khi chủ động muốn xóa dữ liệu phát triển và đã xác nhận không cần giữ dữ liệu.
 
-## 🧪 9. Kiểm thử và kiểm tra chất lượng
+## 🧪 9. Kiểm thử và CI
 
-Mỗi thành viên chịu trách nhiệm kiểm tra chức năng của mình trước khi bàn giao.
+### 9.1. Kiểm thử chức năng
 
-### 9.1. Kiểm tra chức năng
+Mỗi thành viên cần kiểm tra:
 
-Tùy theo chức năng, cần kiểm tra:
-
-- Trường hợp dữ liệu hợp lệ.
-- Trường hợp dữ liệu thiếu hoặc không hợp lệ.
+- Dữ liệu hợp lệ.
+- Dữ liệu thiếu hoặc không hợp lệ.
 - Trường hợp không tìm thấy dữ liệu.
-- Trường hợp người dùng chưa đăng nhập hoặc không đủ quyền.
-- Trường hợp API hoặc database xảy ra lỗi.
-- Trường hợp dữ liệu thay đổi có ảnh hưởng đến chức năng khác.
+- Người dùng chưa đăng nhập hoặc không đủ quyền.
+- Lỗi kết nối API hoặc database.
+- Tình huống dữ liệu thay đổi ảnh hưởng chức năng khác.
+- Các trường hợp nghiệp vụ đặc biệt như tồn kho không đủ, mã giảm giá hết hạn hoặc thanh toán thất bại.
 
-### 9.2. Kiểm tra tự động
+### 9.2. GitHub Actions
 
-Dự án sử dụng GitHub Actions để chạy các bước kiểm tra đã được cấu hình trong `.github/workflows/ci.yml`, chẳng hạn:
+Workflow tại `.github/workflows/ci.yml` chạy các bước được khai báo, có thể bao gồm:
 
-- Build frontend và backend.
-- Kiểm tra TypeScript.
-- Chạy ESLint.
+- Cài dependency từ lockfile.
+- Generate Prisma Client.
+- Khởi tạo database kiểm thử.
+- Kiểm tra seed.
+- Build backend.
+- Chạy ESLint và build frontend.
 
-Chỉ những bước thực sự được khai báo trong file workflow mới được xem là đã tự động hóa. Thành viên cần kiểm tra kết quả CI trước khi merge Pull Request.
+Chỉ những bước có trong workflow thực tế mới được xem là đã tự động hóa.
+
+Trước khi merge Pull Request, cần kiểm tra các status check bắt buộc đã thành công. Build trên máy cá nhân không thay thế được việc kiểm tra CI trên môi trường GitHub Actions.
+
+Nếu CI báo lỗi dependency native trên Linux, cần kiểm tra phiên bản package, lockfile và cấu hình cài dependency thay vì mặc định lỗi nằm trong code React.
 
 ## ✅ 10. Điều kiện hoàn thành một chức năng
 
 Một chức năng được xem là hoàn thành khi:
 
-1. Giao diện hiển thị và hoạt động đúng.
-2. API thực hiện đúng nghiệp vụ.
-3. Dữ liệu được lưu và truy xuất từ database khi cần.
-4. Dữ liệu đầu vào được kiểm tra ở backend.
-5. Quyền truy cập được kiểm tra đúng.
-6. Có xử lý lỗi và thông báo phù hợp.
-7. Không làm hỏng các chức năng đã tích hợp.
-8. Các bước build, TypeScript và lint liên quan đều đạt.
-9. Có hướng dẫn hoặc mô tả ngắn để thành viên khác kiểm tra chức năng.
-10. Pull Request đã được review và merge theo quy trình của nhóm.
+1. Giao diện hoạt động đúng.
+2. API xử lý đúng nghiệp vụ.
+3. Dữ liệu được lưu và truy xuất đúng.
+4. Backend kiểm tra dữ liệu đầu vào và quyền truy cập.
+5. Có xử lý lỗi phù hợp.
+6. Đã kiểm thử các trường hợp chính và trường hợp lỗi.
+7. Không làm hỏng chức năng liên quan.
+8. Các bước build, lint hoặc kiểm tra tương ứng đều đạt.
+9. Có mô tả ngắn để thành viên khác kiểm tra.
+10. Pull Request được review và merge theo quy định nhóm.
 
-## 📅 11. Kế hoạch triển khai trong 5 tuần
+## 📅 11. Kế hoạch triển khai trong 4 tuần
 
-| Thời gian | Mục tiêu |
-|---|---|
-| **Tuần 1** | Thống nhất nghiệp vụ, database, API contract, môi trường và phân công |
-| **Tuần 2** | Phát triển các chức năng chính theo từng module; kết nối frontend với API |
-| **Tuần 3** | Hoàn thiện CRUD, luồng giỏ hàng và đặt hàng, xác thực và phân quyền |
-| **Tuần 4** | Tích hợp toàn hệ thống, sửa lỗi, kiểm thử các luồng liên quan |
-| **Tuần 5** | Ổn định sản phẩm, hoàn thiện báo cáo, chuẩn bị demo và kiểm tra triển khai |
+| Thời gian | Mục tiêu | Công việc chính |
+|---|---|---|
+| **Tuần 1 — Hoàn thiện nền tảng** | Thống nhất cấu trúc và hợp đồng API | Cấu hình môi trường; thống nhất database, API contract; kiểm tra seed; chốt phân công; hoàn thiện các chức năng nền tảng và quy trình Git/CI. |
+| **Tuần 2 — Phát triển chức năng** | Hoàn thiện các module chính | Phát triển xác thực, sản phẩm, danh mục, tồn kho, hồ sơ khách hàng, nhiều địa chỉ giao hàng, giỏ hàng và khuyến mãi. |
+| **Tuần 3 — Đặt hàng và tích hợp** | Hoàn thiện các luồng nghiệp vụ bắt buộc | Tích hợp checkout, tạo đơn hàng, kiểm tra tồn kho, áp dụng khuyến mãi, thanh toán trực tuyến sandbox và quản lý trạng thái đơn hàng. |
+| **Tuần 4 — Kiểm thử và hoàn thiện** | Ổn định hệ thống và chuẩn bị bảo vệ | Kiểm thử toàn bộ luồng mua hàng; sửa lỗi; kiểm tra quyền truy cập; kiểm thử hồi quy; xác nhận CI; hoàn thiện giao diện, README, báo cáo và demo. |
 
-Kế hoạch có thể điều chỉnh theo yêu cầu của giảng viên. Ưu tiên hoàn thành các luồng nghiệp vụ bắt buộc trước, sau đó mới bổ sung tính năng nâng cao.
+### Nguyên tắc triển khai trong 4 tuần
 
-## 📜 12. Quy ước chung của nhóm
+- **Cuối tuần 1:** chốt schema và API contract để hạn chế thay đổi ảnh hưởng lẫn nhau.
+- **Cuối tuần 2:** các module chính phải có phiên bản hoạt động để bắt đầu tích hợp.
+- **Cuối tuần 3:** hoàn thành luồng mua hàng từ giỏ hàng đến kết quả thanh toán sandbox.
+- **Tuần 4:** ưu tiên sửa lỗi và hoàn thiện các chức năng bắt buộc; hạn chế bổ sung tính năng mới không cần thiết.
+
+Các chức năng khuyến mãi, thanh toán trực tuyến và nhiều địa chỉ giao hàng phải có thẻ Trello riêng, người phụ trách và tiêu chí nghiệm thu cụ thể. Không để các chức năng này bị bỏ sót khi tích hợp.
+## 📜 12. Quy ước chung
 
 - Trao đổi trước khi sửa file dùng chung.
-- Thống nhất API và kiểu dữ liệu trước khi hai bên frontend/backend tích hợp.
-- Không tự ý đổi cấu trúc database, route hoặc cấu hình chung.
-- Không commit thông tin bí mật hoặc file môi trường cá nhân.
-- Không merge code chưa kiểm tra.
-- Khi gặp lỗi ảnh hưởng đến thành viên khác, cần thông báo sớm và cung cấp thông tin lỗi cụ thể.
-- Ưu tiên code rõ ràng, dễ đọc và dễ giải thích khi bảo vệ đồ án.
+- Thống nhất API contract và kiểu dữ liệu trước khi tích hợp.
+- Không tự ý đổi schema, endpoint hoặc cấu hình chung.
+- Không commit thông tin bí mật.
+- Không merge khi CI bắt buộc còn thất bại.
+- Không bypass quy tắc branch protection như quy trình thông thường.
+- Báo sớm khi có lỗi ảnh hưởng đến thành viên khác.
+- Ưu tiên code dễ đọc, dễ kiểm thử và dễ giải thích khi bảo vệ đồ án.
 
 ---
 
-**Mục tiêu cuối cùng:** Hoàn thành một website bán giày dép có các chức năng cốt lõi hoạt động thực tế, dữ liệu được quản lý bằng PostgreSQL, frontend và backend kết nối ổn định, đồng thời tất cả thành viên đều hiểu và giải thích được phần mình phụ trách.
+## 🎯 Mục tiêu cuối cùng
+
+Hoàn thành website bán giày dép có các luồng nghiệp vụ cốt lõi hoạt động ổn định: quản lý sản phẩm và tồn kho, giỏ hàng, khuyến mãi, nhiều địa chỉ giao hàng, đặt hàng, thanh toán trực tuyến và quản trị đơn hàng.
+
+Toàn bộ hệ thống sử dụng PostgreSQL để quản lý dữ liệu, có frontend và backend kết nối với nhau, quy trình làm việc nhóm rõ ràng và các kiểm tra tự động phù hợp với phạm vi đồ án.
