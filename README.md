@@ -137,16 +137,25 @@ shoe-store/
 
 ## 👥 4. Phân công công việc
 
-Nhóm gồm 6 thành viên. Mỗi thành viên chịu trách nhiệm chính cho một nhóm chức năng và phối hợp với các thành viên liên quan khi cần thay đổi API hoặc database.
+Nhóm gồm 6 thành viên. Mỗi thành viên chịu trách nhiệm chính cho một nhóm chức năng, bao gồm frontend và backend tương ứng. Các thành viên phối hợp với nhau khi cần thay đổi API, database hoặc tích hợp các luồng nghiệp vụ.
 
 | Thành viên | Phạm vi phụ trách chính |
 |---|---|
-| **Người 1 — Nhóm trưởng** | Tích hợp hệ thống, Git/PR, cấu hình chung, quản lý sản phẩm và điều phối database |
-| **Người 2** | Đăng ký, đăng nhập, phân quyền, hồ sơ và nhiều địa chỉ giao hàng |
-| **Người 3** | Danh mục, tìm kiếm, chi tiết sản phẩm, giỏ hàng và khuyến mãi |
-| **Người 4** | Checkout, tạo đơn hàng và quy trình xử lý đơn |
-| **Người 5** | Quản lý biến thể, tồn kho và đồng bộ số lượng hàng |
-| **Người 6** | Thanh toán trực tuyến sandbox, theo dõi kết quả thanh toán và thống kê theo phạm vi được thống nhất |
+| **M1 — Nhóm trưởng** | Điều phối nhóm, Git/PR, review code, tích hợp hệ thống và cấu hình chung. Frontend: `ProductManagementPage`, `ProductForm`, `ProductTable`, `ProductListPage`. Backend: `products/`, `catalog/`. Phối hợp thống nhất dữ liệu sản phẩm và biến thể. |
+| **M2 — Auth và Customer** | Frontend: đăng ký, đăng nhập, hồ sơ cá nhân, quản lý địa chỉ giao hàng và giao diện quản lý tài khoản Admin. Backend: `auth/`, `customer/`. Phụ trách JWT, RBAC và nhiều địa chỉ giao hàng. |
+| **M3 — Product Detail, Cart và Promotions** | Frontend: `ProductDetailPage`, `CartPage`, `PromotionManagementPage`. Backend: `cart/`, `promotions/`. Phụ trách chi tiết sản phẩm, chọn size/màu, giỏ hàng, quản lý khuyến mãi và kiểm tra điều kiện áp dụng mã giảm giá. |
+| **M4 — Checkout và Orders** | Frontend: `CheckoutPage`, `OrderHistoryPage`, `OrderManagementPage`. Backend: `orders/`. Phụ trách đặt hàng, lưu thông tin địa chỉ giao hàng tại thời điểm đặt đơn, lịch sử đơn hàng và quy trình quản lý trạng thái đơn hàng. |
+| **M5 — Inventory** | Frontend: giao diện quản lý kho, nhập/xuất và kiểm kê. Backend: `inventory/`. Phụ trách tồn kho theo biến thể size/màu, cập nhật số lượng và phối hợp kiểm soát tồn kho trong quá trình đặt hàng. |
+| **M6 — Payments và Dashboard** | Frontend: giao diện kết quả thanh toán và Dashboard. Backend: `payments/`, `dashboard/`. Phụ trách tích hợp **một cổng thanh toán sandbox** (VNPay, MoMo hoặc PayOS), xác minh kết quả thanh toán và thống kê đơn hàng, doanh thu. |
+
+### Nguyên tắc phối hợp
+
+- M1 điều phối và review Pull Request; các thành viên chủ động phát triển, kiểm thử module được giao.
+- Mọi thay đổi ảnh hưởng đến `schema.prisma`, API contract hoặc cấu hình chung phải được trao đổi trước khi thực hiện.
+- M1, M3 và M5 thống nhất dữ liệu sản phẩm, biến thể và tồn kho.
+- M3 và M4 thống nhất cách tính tổng tiền, áp dụng khuyến mãi và dữ liệu chuyển sang checkout.
+- M4 và M6 thống nhất trạng thái đơn hàng và thanh toán.
+- Mỗi thành viên làm việc trên nhánh riêng, tạo Pull Request và kiểm tra CI trước khi tích hợp vào nhánh chung.
 
 ### Nguyên tắc phân công
 
