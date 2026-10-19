@@ -8,6 +8,10 @@ import catalogRouter from './modules/catalog/catalog.router';
 import cartRouter from './modules/cart/cart.router';
 import orderRouter from './modules/orders/order.router';
 import customerRouter from './modules/customer/customer.router';
+import dashboardRouter from './modules/dashboard/dashboard.router';
+import inventoryRouter from './modules/inventory/inventory.router';
+import paymentRouter from './modules/payments/payment.router';
+import promotionRouter from './modules/promotions/promotion.router';
 
 const app = express();
 
@@ -35,5 +39,9 @@ app.use('/api/catalog', catalogRouter);     // Người 3: Khách xem, lọc, t�
 app.use('/api/cart', cartRouter);           // Người 4: Giỏ hàng & Thanh toán tạo đơn
 app.use('/api/orders', orderRouter);        // Người 5: Admin quản lý đơn & Báo cáo
 app.use('/api/customer', customerRouter);   // Người 6: Hồ sơ cá nhân & Đơn đã mua
+app.use('/api/dashboard', dashboardRouter);
+app.use('/api/inventory', inventoryRouter);
+app.use('/api/payments', paymentRouter);
+app.use('/api/promotions', promotionRouter);
 
 export default app;
