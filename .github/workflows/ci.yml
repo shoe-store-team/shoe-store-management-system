@@ -70,6 +70,12 @@ jobs:
 
       - name: Install dependencies
         run: npm ci --include=optional
+      
+      - name: Kiểm tra Rolldown native binding
+        run: |
+          npm ls vite rolldown
+          npm ls @rolldown/binding-linux-x64-gnu
+          node -e "import('rolldown').then(() => console.log('Rolldown OK'))"
 
       - name: Chạy ESLint
         run: npm --workspace=apps/web run lint
