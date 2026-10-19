@@ -1,10 +1,8 @@
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom'
 import './index.css'
 import { LoginPage } from './pages/auth/LoginPage'
-import { ProductManagementPage } from './pages/admin-products/ProductManagementPage'
 import { ProductListPage } from './pages/catalog/ProductListPage'
 import { CartPage } from './pages/checkout/CartPage'
-import { OrderManagementPage } from './pages/admin-orders/OrderManagementPage'
 import { ProfilePage } from './pages/customer/ProfilePage'
 
 export default function App() {
@@ -31,8 +29,7 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/cart" element={<CartPage />} />
           <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/admin/products" element={<ProductManagementPage />} />
-          <Route path="/admin/orders" element={<OrderManagementPage />} />
+        
         </Routes>
       </main>
     </BrowserRouter>
