@@ -37,7 +37,7 @@ jobs:
           node-version: 24
 
       - name: Cài đặt dependencies
-        run: npm install
+        run: npm ci --include=optional
 
       - name: Khởi tạo Prisma Client
         run: npm --workspace=apps/api exec -- prisma generate
