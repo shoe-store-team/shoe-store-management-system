@@ -73,7 +73,9 @@ export function LoginPage() {
             required
           />
         </div>
-
+        <div style={{ textAlign: "right", marginTop: "8px" }}>
+          <a href="/forgot-password">Quên mật khẩu?</a>
+        </div>
         {error && <p style={{ color: "red" }}>{error}</p>}
 
         <button type="submit" disabled={loading}>

@@ -9,7 +9,13 @@
 // export default router;
 
 import { Router, Request, Response } from "express";
-import { registerUser, loginUser } from "./auth.service";
+// import { registerUser, loginUser } from "./auth.service";
+import {
+  registerUser,
+  loginUser,
+  requestPasswordReset,
+  resetPassword,
+} from "./auth.service";
 
 const router = Router();
 
@@ -17,10 +23,7 @@ router.post("/register", async (req: Request, res: Response) => {
   const { email, password, name, phone } = req.body ?? {};
 
   // Kiểm tra email và mật khẩu
-  if (
-    typeof email !== "string" ||
-    typeof password !== "string"
-  ) {
+  if (typeof email !== "string" || typeof password !== "string") {
     res.status(400).json({
       message: "Email và mật khẩu là bắt buộc",
     });
@@ -151,4 +154,76 @@ router.post("/login", async (req: Request, res: Response) => {
   }
 });
 
+router.post("/forgot-password", async (req: Request, res: Response) => {
+  const { email } = req.body ?? {};
+
+  if (typeof email !== "string" || !email.trim()) {
+    res.status(400).json({ message: "Vui lòng nhập email" });
+    return;
+  }
+
+  try {
+    await requestPasswordReset(email);
+
+    res.json({
+      message: "Nếu tài khoản tồn tại, mã OTP đã được tạo.",
+    });
+  } catch (error) {
+    console.error("Forgot password error:", error);
+    res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+});
+
+router.post("/reset-password", async (req: Request, res: Response) => {
+  const { email, otp, newPassword } = req.body ?? {};
+
+  if (
+    typeof email !== "string" ||
+    typeof otp !== "string" ||
+    !/^\d{6}$/.test(otp) ||
+    typeof newPassword !== "string"
+  ) {
+    res.status(400).json({ message: "Thông tin không hợp lệ" });
+    return;
+  }
+
+  try {
+    await resetPassword(email, otp, newPassword);
+    res.json({ message: "Đổi mật khẩu thành công" });
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === "INVALID_PASSWORD") {
+        res.status(400).json({
+          message: "Mật khẩu phải từ 8 ký tự và tối đa 72 byte",
+        });
+        return;
+      }
+
+      if (error.message === "OTP_ATTEMPTS_EXCEEDED") {
+        res.status(429).json({
+          message: "Bạn đã nhập sai OTP quá số lần cho phép",
+        });
+        return;
+      }
+
+      if (error.message === "INVALID_OTP") {
+        res.status(400).json({
+          message: "OTP không đúng hoặc đã hết hạn",
+        });
+        return;
+      }
+      if (error.message === "SAME_PASSWORD") {
+        res.status(400).json({
+          message: "Mật khẩu mới không được trùng mật khẩu cũ",
+        });
+        return;
+      }
+    }
+
+    console.error("Reset password error:", error);
+    res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+});
+
 export default router;
+
