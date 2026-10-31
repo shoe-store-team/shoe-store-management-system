@@ -1,37 +1,41 @@
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom'
-import './index.css'
-import { LoginPage } from './pages/auth/LoginPage'
-import { ProductListPage } from './pages/catalog/ProductListPage'
-import { CartPage } from './pages/checkout/CartPage'
-import { ProfilePage } from './pages/customer/ProfilePage'
+import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
+import './index.css';
+import { LoginPage } from './pages/auth/LoginPage';
+import { ProductListPage } from './pages/catalog/ProductListPage';
+import { CartPage } from './pages/checkout/CartPage';
+import { ProfilePage } from './pages/customer/ProfilePage';
+import { ProductManagementPage } from './pages/admin/products/ProductManagementPage';
 
-export default function App() {
+function AppRoutes() {
+  const location = useLocation();
+  const isAdmin = location.pathname.startsWith('/admin');
+
   return (
-    <BrowserRouter>
-      <main className="trang-quan-ly">
-        <header className="thanh-dau-trang">
-          <div>
-            <h1>SHOE STORE</h1>
-            <p>Hệ thống cửa hàng giày (Nhóm 6 người)</p>
-          </div>
-          <nav style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-            <Link to="/" style={{ color: 'white' }}>1. Cửa hàng (N3)</Link>
-            <Link to="/cart" style={{ color: 'white' }}>2. Giỏ hàng (N4)</Link>
-            <Link to="/profile" style={{ color: 'white' }}>3. Hồ sơ (N6)</Link>
-            <Link to="/login" style={{ color: 'white' }}>4. Đăng nhập (N1)</Link>
-            <Link to="/admin/products" style={{ color: '#fbbf24' }}>5. QL Giày (N2)</Link>
-            <Link to="/admin/orders" style={{ color: '#fbbf24' }}>6. QL Đơn (N5)</Link>
+    <>
+      {!isAdmin && location.pathname !== '/' && (
+        <header className="sl-legacy-header">
+          <Link to="/" className="sl-legacy-brand">Shoe Store</Link>
+          <nav>
+            <Link to="/">Cửa hàng</Link>
+            <Link to="/cart">Giỏ hàng</Link>
+            <Link to="/profile">Hồ sơ</Link>
+            <Link to="/login">Đăng nhập</Link>
+            <Link to="/admin/products">Quản trị</Link>
           </nav>
         </header>
+      )}
+      <Routes>
+        <Route path="/" element={<ProductListPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/cart" element={<CartPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/admin/products" element={<ProductManagementPage />} />
+        <Route path="*" element={<ProductListPage />} />
+      </Routes>
+    </>
+  );
+}
 
-        <Routes>
-          <Route path="/" element={<ProductListPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/cart" element={<CartPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-        
-        </Routes>
-      </main>
-    </BrowserRouter>
-  )
+export default function App() {
+  return <BrowserRouter><AppRoutes /></BrowserRouter>;
 }
