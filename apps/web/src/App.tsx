@@ -3,6 +3,8 @@ import './index.css'
 import { LoginPage } from './pages/auth/LoginPage'
 import { ProductListPage } from './pages/catalog/ProductListPage'
 import { CartPage } from './pages/checkout/CartPage'
+import { ProductDetailPage } from './pages/catalog/ProductDetailPage'
+import { PromotionManagementPage } from './pages/admin/promotions/PromotionManagementPage'
 import { ProfilePage } from './pages/customer/ProfilePage'
 
 export default function App() {
@@ -21,13 +23,16 @@ export default function App() {
             <Link to="/login" style={{ color: 'white' }}>4. Đăng nhập (N1)</Link>
             <Link to="/admin/products" style={{ color: '#fbbf24' }}>5. QL Giày (N2)</Link>
             <Link to="/admin/orders" style={{ color: '#fbbf24' }}>6. QL Đơn (N5)</Link>
+            <Link to="/admin/promotions" style={{ color: '#fbbf24' }}>7. QL Khuyến mãi</Link>
           </nav>
         </header>
 
         <Routes>
           <Route path="/" element={<ProductListPage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/product/:id" element={<ProductDetailPage />} />
           <Route path="/cart" element={<CartPage />} />
+          <Route path="/admin/promotions" element={<PromotionManagementPage />} />
           <Route path="/profile" element={<ProfilePage />} />
         
         </Routes>
