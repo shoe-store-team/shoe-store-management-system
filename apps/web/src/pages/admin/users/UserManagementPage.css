@@ -1,0 +1,292 @@
+
+.user-management {
+  padding: 28px;
+  color: #172b45;
+  min-width: 0;
+}
+
+.user-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.user-heading h2 {
+  margin: 0 0 8px;
+  font-size: 25px;
+  color: #111827;
+}
+
+.user-heading p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.user-count {
+  color: #17365c;
+  background: #eef3f9;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.user-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 16px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  margin-bottom: 20px;
+}
+
+.user-toolbar input,
+.user-toolbar select {
+  box-sizing: border-box;
+  height: 42px;
+  border: 1px solid #d6dce5;
+  border-radius: 6px;
+  padding: 0 12px;
+  background: #fff;
+  color: #26364b;
+  font: inherit;
+}
+
+.user-toolbar input:focus,
+.user-toolbar select:focus {
+  outline: 2px solid #d9e7fa;
+  border-color: #527fb5;
+}
+
+.user-search {
+  flex: 1;
+  min-width: 220px;
+}
+
+.user-toolbar select {
+  min-width: 155px;
+}
+
+.user-table-card {
+  background: #fff;
+  border: 1px solid #e2e6ed;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(20, 39, 65, 0.04);
+}
+
+.user-table-scroll {
+  overflow-x: auto;
+}
+
+.user-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.user-table th {
+  background: #f3f5f8;
+  color: #35445a;
+  font-weight: 600;
+  padding: 16px 14px;
+}
+
+.user-table td {
+  padding: 13px 14px;
+  border-top: 1px solid #edf0f4;
+  color: #374151;
+}
+
+.user-table tbody tr:hover {
+  background: #fafbfd;
+}
+
+.user-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #172b45;
+  font-weight: 500;
+}
+
+.user-avatar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #e8f1fc;
+  color: #285f9f;
+  font-weight: 700;
+}
+
+.role-badge,
+.status-badge {
+  display: inline-block;
+  border-radius: 20px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.role-badge {
+  background: #f0f2f5;
+  color: #526176;
+}
+
+.role-admin {
+  background: #fff0dc;
+  color: #b96900;
+}
+
+.status-active {
+  background: #e8f6ed;
+  color: #187743;
+}
+
+.status-locked {
+  background: #fff0f0;
+  color: #c33737;
+}
+
+.user-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.user-actions button {
+  min-width: 58px;
+  padding: 7px 12px;
+  border: 1px solid;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 500;
+}
+
+.btn-edit {
+  border-color: #b8d3fb !important;
+  color: #276dc0;
+}
+
+.btn-lock {
+  border-color: #f2c4c4 !important;
+  color: #c43c3c;
+}
+
+.user-actions button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.user-table-footer {
+  border-top: 1px solid #edf0f4;
+  padding: 16px;
+  color: #68758a;
+  font-size: 13px;
+}
+
+.user-message,
+.user-error,
+.user-empty {
+  padding: 20px;
+}
+
+.user-error {
+  color: #c33737;
+}
+
+.user-empty {
+  text-align: center;
+  color: #6b7280;
+}
+
+@media (max-width: 768px) {
+  .user-management {
+    padding: 16px;
+  }
+
+  .user-heading {
+    align-items: flex-start;
+  }
+
+  .user-toolbar {
+    flex-direction: column;
+  }
+
+  .user-toolbar input,
+  .user-toolbar select {
+    width: 100%;
+  }
+}
+
+.user-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 1000;
+}
+
+.user-modal {
+  width: min(460px, 100%);
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+}
+
+.user-modal h3 {
+  margin: 0;
+}
+
+.user-modal label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.user-modal input,
+.user-modal select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+}
+
+.user-modal .user-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.user-modal button {
+  cursor: pointer;
+  padding: 9px 14px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+}
+
+.user-modal button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

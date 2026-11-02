@@ -1,7 +1,14 @@
-
-import { Link, Outlet } from 'react-router-dom';
+import { Link, Outlet, useNavigate } from "react-router-dom";
+import { authStore } from "../stores/authStore";
 
 export function AdminLayout() {
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    authStore.logout();
+    navigate("/login", { replace: true });
+  };
+
   return (
     <div className="admin-layout">
       <aside className="admin-sidebar">
@@ -21,15 +28,14 @@ export function AdminLayout() {
           <Link to="/admin/users">Người dùng</Link>
         </nav>
 
-        <Link to="/" className="admin-back">
-          ← Quay lại cửa hàng
-        </Link>
+        <button type="button" className="admin-back" onClick={handleLogout}>
+          Đăng xuất
+        </button>
       </aside>
 
       <div className="admin-content">
         <header className="admin-topbar">
           <span>Hệ thống quản trị</span>
-          <Link to="/">Xem cửa hàng ↗</Link>
         </header>
 
         <main className="admin-main">

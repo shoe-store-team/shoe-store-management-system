@@ -1,6 +1,7 @@
 ﻿import { useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { customerService } from "../../services/customerService";
+import { useAuth } from "../../stores/authStore";
 
 type Profile = {
   id: string;
@@ -38,7 +39,11 @@ export function ProfilePage() {
   const [phone, setPhone] = useState("");
   const [addressForm, setAddressForm] = useState({ ...emptyAddress });
   const [editingId, setEditingId] = useState<string | null>(null);
-
+  const { logout } = useAuth();
+  function handleLogout() {
+    logout();
+    window.location.assign("/");
+  }
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
@@ -189,7 +194,7 @@ export function ProfilePage() {
   }
 
   return (
-    <div className="noi-dung">
+    <div className="noi-dung profile-page">
       <div className="tieu-de">
         <div>
           <h2>Hồ sơ của tôi</h2>
@@ -340,6 +345,20 @@ export function ProfilePage() {
           )}
         </form>
       </section>
+      <div className="profile-logout">
+        <div>
+          <strong>Kết thúc phiên đăng nhập?</strong>
+          <p>Đăng xuất khỏi tài khoản Shoe Store của bạn.</p>
+        </div>
+
+        <button
+          type="button"
+          className="profile-logout-btn"
+          onClick={handleLogout}
+        >
+          Đăng xuất
+        </button>
+      </div>
     </div>
   );
 }

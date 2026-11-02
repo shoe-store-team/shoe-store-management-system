@@ -1,4 +1,5 @@
 ﻿import { authStore } from "../../stores/authStore";
+import { Link } from "react-router-dom";
 import { useState } from "react";
 
 export function LoginPage() {
@@ -41,7 +42,12 @@ export function LoginPage() {
         id: user.id,
         role: user.role,
       });
-      window.location.href = "/";
+
+      if (user.role === "ADMIN") {
+        window.location.href = "/admin";
+      } else {
+        window.location.href = "/";
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Lỗi kết nối API");
     } finally {
@@ -81,6 +87,10 @@ export function LoginPage() {
         <button type="submit" disabled={loading}>
           {loading ? "Đang đăng nhập..." : "Đăng nhập"}
         </button>
+        <div className="login-register">
+          <span>Chưa có tài khoản?</span>
+          <Link to="/register">Đăng ký ngay</Link>
+        </div>
       </form>
     </div>
   );

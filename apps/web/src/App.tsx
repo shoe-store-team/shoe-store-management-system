@@ -1,3 +1,4 @@
+
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import "./index.css";
 
@@ -6,10 +7,12 @@ import { AdminLayout } from "./layouts/AdminLayout";
 
 import { RegisterPage } from "./pages/auth/RegisterPage";
 import { LoginPage } from "./pages/auth/LoginPage";
+import { ForgotPasswordPage } from "./pages/auth/ForgotPasswordPage";
+
 import { ProductListPage } from "./pages/catalog/ProductListPage";
+import { ProductDetailPage } from "./pages/catalog/ProductDetailPage";
 import { CartPage } from "./pages/checkout/CartPage";
 import { ProfilePage } from "./pages/customer/ProfilePage";
-import { ProductDetailPage } from "./pages/catalog/ProductDetailPage";
 
 import { Page as DashboardPage } from "./pages/admin/dashboard/DashboardPage";
 import { Page as InventoryCheckPage } from "./pages/admin/inventory/InventoryCheckPage";
@@ -18,10 +21,9 @@ import { Page as StockAdjustmentPage } from "./pages/admin/inventory/StockAdjust
 import { Page as StockExportPage } from "./pages/admin/inventory/StockExportPage";
 import { Page as StockImportPage } from "./pages/admin/inventory/StockImportPage";
 import { Page as OrderManagementPage } from "./pages/admin/orders/OrderManagementPage";
-import { Page as ProductManagementPage } from "./pages/admin/products/ProductManagementPage";
-import { Page as PromotionManagementPage } from "./pages/admin/promotions/PromotionManagementPage";
+import {  ProductManagementPage } from "./pages/admin/products/ProductManagementPage";
+import { PromotionManagementPage } from "./pages/admin/promotions/PromotionManagementPage";
 import { Page as UserManagementPage } from "./pages/admin/users/UserManagementPage";
-import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage';
 
 export default function App() {
   return (
@@ -35,6 +37,8 @@ export default function App() {
           <Route path="/cart" element={<CartPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/products/:id" element={<ProductDetailPage />} />
+          {/* Giữ route cũ nếu main đang dùng /product/:id */}
+          <Route path="/product/:id" element={<ProductDetailPage />} />
         </Route>
 
         <Route path="/admin" element={<AdminLayout />}>
@@ -45,10 +49,7 @@ export default function App() {
           <Route path="inventory" element={<InventoryCheckPage />} />
           <Route path="inventory/check" element={<InventoryCheckPage />} />
           <Route path="inventory/history" element={<InventoryHistoryPage />} />
-          <Route
-            path="inventory/adjustment"
-            element={<StockAdjustmentPage />}
-          />
+          <Route path="inventory/adjustment" element={<StockAdjustmentPage />} />
           <Route path="inventory/import" element={<StockImportPage />} />
           <Route path="inventory/export" element={<StockExportPage />} />
           <Route path="promotions" element={<PromotionManagementPage />} />
