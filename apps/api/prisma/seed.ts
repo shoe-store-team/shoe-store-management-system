@@ -24,10 +24,11 @@ async function main() {
     danhMucTheoTen[ten] = danhMuc.id;
   }
 
-  // 2. Khai báo dữ liệu sản phẩm và các biến thể size/màu.
-  // imageUrl là URL ảnh lưu trong database, không phải file ảnh cục bộ.
+  // 2. Dữ liệu 12 sản phẩm và các biến thể size/màu.
+  // stock chỉ được sử dụng khi tạo biến thể mới.
   const sanPhamMau = [
     {
+      productCode: 'SP00001',
       name: 'Nike Air Demo',
       description: 'Giày thể thao phong cách năng động.',
       basePrice: 1500000,
@@ -41,6 +42,7 @@ async function main() {
       ],
     },
     {
+      productCode: 'SP00002',
       name: 'Adidas Run Demo',
       description: 'Giày chạy bộ nhẹ, phù hợp vận động hằng ngày.',
       basePrice: 1800000,
@@ -54,6 +56,7 @@ async function main() {
       ],
     },
     {
+      productCode: 'SP00003',
       name: 'Street Runner',
       description: 'Giày thể thao phù hợp đi học và đi chơi.',
       basePrice: 950000,
@@ -66,6 +69,7 @@ async function main() {
       ],
     },
     {
+      productCode: 'SP00004',
       name: 'Urban Classic',
       description: 'Giày thời trang kiểu dáng đơn giản.',
       basePrice: 890000,
@@ -78,6 +82,7 @@ async function main() {
       ],
     },
     {
+      productCode: 'SP00005',
       name: 'Speed Runner',
       description: 'Giày chạy bộ dành cho các buổi tập luyện.',
       basePrice: 1250000,
@@ -90,6 +95,7 @@ async function main() {
       ],
     },
     {
+      productCode: 'SP00006',
       name: 'Court Pro',
       description: 'Giày bóng rổ cổ cao phong cách thể thao.',
       basePrice: 2100000,
@@ -102,6 +108,7 @@ async function main() {
       ],
     },
     {
+      productCode: 'SP00007',
       name: 'Hoop Flex',
       description: 'Giày bóng rổ dành cho hoạt động trong sân.',
       basePrice: 1950000,
@@ -114,6 +121,7 @@ async function main() {
       ],
     },
     {
+      productCode: 'SP00008',
       name: 'Daily Walk',
       description: 'Giày đi bộ thoải mái khi sử dụng hằng ngày.',
       basePrice: 750000,
@@ -126,6 +134,7 @@ async function main() {
       ],
     },
     {
+      productCode: 'SP00009',
       name: 'Canvas Street',
       description: 'Giày phong cách đường phố trẻ trung.',
       basePrice: 650000,
@@ -138,6 +147,7 @@ async function main() {
       ],
     },
     {
+      productCode: 'SP00010',
       name: 'Light Move',
       description: 'Giày nhẹ dành cho đi bộ và vận động.',
       basePrice: 1100000,
@@ -150,6 +160,7 @@ async function main() {
       ],
     },
     {
+      productCode: 'SP00011',
       name: 'Active Sport',
       description: 'Giày thể thao đa dụng cho sinh hoạt hằng ngày.',
       basePrice: 1350000,
@@ -162,6 +173,7 @@ async function main() {
       ],
     },
     {
+      productCode: 'SP00012',
       name: 'Classic Sneaker',
       description: 'Giày sneaker cổ điển, dễ phối đồ.',
       basePrice: 990000,
@@ -175,7 +187,7 @@ async function main() {
     },
   ];
 
-  // 3. Tạo hoặc cập nhật từng sản phẩm.
+  // 3. Tạo hoặc cập nhật sản phẩm theo productCode.
   for (const sp of sanPhamMau) {
     const categoryId = danhMucTheoTen[sp.category];
 
@@ -183,37 +195,33 @@ async function main() {
       throw new Error(`Không tìm thấy danh mục: ${sp.category}`);
     }
 
-    // Product không có unique constraint trên name,
-    // nên dùng findFirst để tìm sản phẩm theo tên.
-    const sanPhamCu = await prisma.product.findFirst({
-      where: { name: sp.name },
-      select: { id: true },
+    const sanPham = await prisma.product.upsert({
+      where: {
+        productCode: sp.productCode,
+      },
+
+      update: {
+        name: sp.name,
+        description: sp.description,
+        basePrice: sp.basePrice,
+        imageUrl: sp.imageUrl,
+        categoryId,
+        isActive: true,
+      },
+
+      create: {
+        productCode: sp.productCode,
+        name: sp.name,
+        description: sp.description,
+        basePrice: sp.basePrice,
+        imageUrl: sp.imageUrl,
+        categoryId,
+        isActive: true,
+      },
     });
 
-    const sanPham = sanPhamCu
-      ? await prisma.product.update({
-          where: { id: sanPhamCu.id },
-          data: {
-            description: sp.description,
-            basePrice: sp.basePrice,
-            imageUrl: sp.imageUrl,
-            categoryId,
-            isActive: true,
-          },
-        })
-      : await prisma.product.create({
-          data: {
-            name: sp.name,
-            description: sp.description,
-            basePrice: sp.basePrice,
-            imageUrl: sp.imageUrl,
-            categoryId,
-            isActive: true,
-          },
-        });
-
-    // 4. Tạo biến thể nếu chưa có.
-    // Nếu biến thể đã có, không ghi đè số lượng tồn kho.
+    // 4. Tạo biến thể nếu chưa tồn tại.
+    // Không ghi đè stock của biến thể đã có.
     for (const bienThe of sp.variants) {
       await prisma.productVariant.upsert({
         where: {
@@ -223,9 +231,16 @@ async function main() {
             color: bienThe.color,
           },
         },
-        update: {},
+
+        update: {
+          isActive: true,
+        },
+
         create: {
           productId: sanPham.id,
+          sku: `${sp.productCode}-V${String(
+            sp.variants.indexOf(bienThe) + 1
+          ).padStart(3, '0')}`,
           size: bienThe.size,
           color: bienThe.color,
           stock: bienThe.stock,
@@ -235,21 +250,21 @@ async function main() {
     }
 
     console.log(
-      `${sanPhamCu ? 'Đã cập nhật' : 'Đã tạo'} sản phẩm: ${sp.name}`,
+      `Đã xử lý sản phẩm: ${sp.productCode} - ${sp.name}`
     );
   }
 
-  console.log(
-    `Hoàn tất! Đã xử lý ${sanPhamMau.length} sản phẩm và ${tenDanhMuc.length} danh mục.`,
-  );
+  console.log('----------------------------------');
+  console.log(`Đã xử lý ${sanPhamMau.length} sản phẩm.`);
+  console.log(`Đã xử lý ${tenDanhMuc.length} danh mục.`);
+  console.log('Seed hoàn tất!');
 }
 
 main()
   .catch((error) => {
     console.error('Lỗi tạo dữ liệu seed:', error);
-    throw error;
+    process.exitCode = 1;
   })
   .finally(async () => {
     await prisma.$disconnect();
   });
-
