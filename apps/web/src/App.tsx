@@ -15,11 +15,11 @@ import { CartPage } from "./pages/checkout/CartPage";
 import { ProfilePage } from "./pages/customer/ProfilePage";
 
 import { Page as DashboardPage } from "./pages/admin/dashboard/DashboardPage";
-import { Page as InventoryCheckPage } from "./pages/admin/inventory/InventoryCheckPage";
-import { Page as InventoryHistoryPage } from "./pages/admin/inventory/InventoryHistoryPage";
-import { Page as StockAdjustmentPage } from "./pages/admin/inventory/StockAdjustmentPage";
-import { Page as StockExportPage } from "./pages/admin/inventory/StockExportPage";
-import { Page as StockImportPage } from "./pages/admin/inventory/StockImportPage";
+import {  InventoryCheckPage } from "./pages/admin/inventory/InventoryCheckPage";
+import {  InventoryHistoryPage } from "./pages/admin/inventory/InventoryHistoryPage";
+import {  StockAdjustmentPage } from "./pages/admin/inventory/StockAdjustmentPage";
+import {  StockExportPage } from "./pages/admin/inventory/StockExportPage";
+import {  StockImportPage } from "./pages/admin/inventory/StockImportPage";
 import { Page as OrderManagementPage } from "./pages/admin/orders/OrderManagementPage";
 import {  ProductManagementPage } from "./pages/admin/products/ProductManagementPage";
 import { PromotionManagementPage } from "./pages/admin/promotions/PromotionManagementPage";
