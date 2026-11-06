@@ -1,109 +1,99 @@
-import { useCallback, useEffect, useState } from 'react';
-
+import { useEffect, useState } from 'react';
 import { orderService } from '../../services/orderService';
 import { dinhDangTien } from '../../services/request';
-
 import type { Order, OrderStatus } from '../../types/order';
 
-const tenTrangThai: Record<OrderStatus, string> = {
-  PENDING: 'Cho xac nhan',
-  CONFIRMED: 'Da xac nhan',
-  PROCESSING: 'Dang xu ly',
-  SHIPPED: 'Dang giao hang',
-  DELIVERED: 'Da giao hang',
-  CANCELLED: 'Da huy',
-};
-
-const mauTrangThai: Record<OrderStatus, string> = {
-  PENDING: '#f59e0b',
-  CONFIRMED: '#2563eb',
-  PROCESSING: '#8b5cf6',
-  SHIPPED: '#0891b2',
-  DELIVERED: '#16a34a',
-  CANCELLED: '#dc2626',
+const trangThaiDonHang: Record<OrderStatus, string> = {
+  PENDING: 'Chờ xác nhận',
+  CONFIRMED: 'Đã xác nhận',
+  PROCESSING: 'Đang xử lý',
+  SHIPPED: 'Đang giao hàng',
+  DELIVERED: 'Đã giao hàng',
+  CANCELLED: 'Đã hủy',
 };
 
 export function OrderHistoryPage() {
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [cancelingId, setCancelingId] = useState<string | null>(null);
-
-  const taiLichSu = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError('');
-
-      const data = await orderService.layLichSu();
-      setOrders(data);
-    } catch (e) {
-      setError((e as Error).message || 'Khong the tai lich su don hang');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const [donHang, setDonHang] = useState<Order[]>([]);
+  const [dangTai, setDangTai] = useState(true);
+  const [loi, setLoi] = useState('');
+  const [dangHuy, setDangHuy] = useState<string | null>(null);
 
   useEffect(() => {
-    taiLichSu();
-  }, [taiLichSu]);
+    let cancelled = false;
+
+    const taiLichSu = async () => {
+      try {
+        const data = await orderService.layLichSu();
+
+        if (!cancelled) {
+          setDonHang(data);
+          setLoi('');
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setLoi((error as Error).message || 'Không thể tải lịch sử đơn hàng.');
+        }
+      } finally {
+        if (!cancelled) {
+          setDangTai(false);
+        }
+      }
+    };
+
+    void taiLichSu();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const huyDonHang = async (id: string) => {
-    const dongY = window.confirm('Ban co chac chan muon huy don hang nay?');
+    const dongY = window.confirm('Bạn có chắc chắn muốn hủy đơn hàng này không?');
 
     if (!dongY) return;
 
     try {
-      setCancelingId(id);
-      setError('');
+      setDangHuy(id);
+      setLoi('');
 
-      const updatedOrder = await orderService.huyDonHang(id);
+      const donHangMoi = await orderService.huyDonHang(id);
 
-      setOrders((current) =>
-        current.map((order) =>
-          order.id === id ? updatedOrder : order,
-        ),
+      setDonHang((danhSach) =>
+        danhSach.map((item) => (item.id === id ? donHangMoi : item)),
       );
-
-      window.alert('Huy don hang thanh cong!');
-    } catch (e) {
-      setError((e as Error).message || 'Huy don hang that bai');
+    } catch (error) {
+      setLoi((error as Error).message || 'Không thể hủy đơn hàng.');
     } finally {
-      setCancelingId(null);
+      setDangHuy(null);
     }
   };
 
-  if (loading) {
-    return <div className="noi-dung">Dang tai lich su don hang...</div>;
+  if (dangTai) {
+    return <div className="noi-dung">Đang tải lịch sử đơn hàng...</div>;
   }
 
   return (
     <div className="noi-dung">
-      <h2>Lich su don hang</h2>
+      <h2>Lịch sử mua hàng</h2>
 
-      {error && (
+      {loi && (
         <p style={{ color: '#dc2626', marginBottom: 16 }}>
-          {error}
+          {loi}
         </p>
       )}
 
-      <button
-        onClick={taiLichSu}
-        style={{ padding: '8px 16px', marginBottom: 20 }}
-      >
-        Lam moi
-      </button>
-
-      {orders.length === 0 ? (
-        <p>Ban chua co don hang nao.</p>
+      {donHang.length === 0 ? (
+        <p>Bạn chưa có đơn hàng nào.</p>
       ) : (
-        <div style={{ display: 'grid', gap: 16 }}>
-          {orders.map((order) => (
+        <div>
+          {donHang.map((item) => (
             <div
-              key={order.id}
+              key={item.id}
               style={{
                 border: '1px solid #ddd',
                 borderRadius: 8,
-                padding: 20,
+                padding: 16,
+                marginBottom: 20,
               }}
             >
               <div
@@ -115,94 +105,77 @@ export function OrderHistoryPage() {
                 }}
               >
                 <div>
-                  <strong>Ma don hang: {order.id}</strong>
-
-                  <p>
-                    Ngay dat:{' '}
-                    {new Date(order.createdAt).toLocaleString('vi-VN')}
-                  </p>
+                  <h3>Đơn hàng #{item.id.slice(0, 8)}</h3>
+                  <p>Ngày đặt: {new Date(item.createdAt).toLocaleString('vi-VN')}</p>
                 </div>
 
-                <span
-                  style={{
-                    color: mauTrangThai[order.status],
-                    fontWeight: 'bold',
-                  }}
-                >
-                  {tenTrangThai[order.status]}
-                </span>
+                <div>
+                  <strong>
+                    Trạng thái: {trangThaiDonHang[item.status]}
+                  </strong>
+                </div>
               </div>
 
               <hr />
 
-              <h4>San pham</h4>
+              <h4>Thông tin nhận hàng</h4>
+              <p>Người nhận: {item.recipientName}</p>
+              <p>Số điện thoại: {item.phone}</p>
+              <p>Địa chỉ: {item.shippingAddress}</p>
 
-              {order.items.map((item) => (
+              <h4>Sản phẩm đã đặt</h4>
+
+              {item.items.map((sanPham) => (
                 <div
-                  key={item.id}
+                  key={sanPham.id}
                   style={{
                     display: 'flex',
                     justifyContent: 'space-between',
-                    gap: 12,
-                    marginBottom: 8,
+                    flexWrap: 'wrap',
+                    gap: 8,
+                    padding: '8px 0',
+                    borderBottom: '1px solid #eee',
                   }}
                 >
-                  <span>
-                    {item.productName} - Size {item.size} - {item.color}
-                    {' x '}
-                    {item.quantity}
-                  </span>
+                  <div>
+                    <strong>{sanPham.productName}</strong>
+                    <p>
+                      Size: {sanPham.size} | Màu: {sanPham.color}
+                    </p>
+                    <p>Số lượng: {sanPham.quantity}</p>
+                  </div>
 
-                  <span>
+                  <div>
                     {dinhDangTien(
-                      Number(item.price) * item.quantity,
+                      Number(sanPham.price) * sanPham.quantity,
                     )}
-                  </span>
+                  </div>
                 </div>
               ))}
 
-              <hr />
+              <div style={{ textAlign: 'right', marginTop: 16 }}>
+                <h3>
+                  Tổng tiền: {dinhDangTien(Number(item.totalAmount))}
+                </h3>
 
-              <p>
-                Nguoi nhan: <strong>{order.recipientName}</strong>
-              </p>
-
-              <p>
-                So dien thoai: {order.phone}
-              </p>
-
-              <p>
-                Dia chi: {order.shippingAddress}
-              </p>
-
-              <p>
-                Trang thai thanh toan: {order.paymentStatus}
-              </p>
-
-              <h3 style={{ textAlign: 'right' }}>
-                Tong tien: {dinhDangTien(Number(order.totalAmount))}
-              </h3>
-
-              {order.status === 'PENDING' && (
-                <div style={{ textAlign: 'right' }}>
+                {item.status === 'PENDING' && (
                   <button
-                    onClick={() => huyDonHang(order.id)}
-                    disabled={cancelingId === order.id}
+                    type="button"
+                    disabled={dangHuy === item.id}
+                    onClick={() => huyDonHang(item.id)}
                     style={{
-                      backgroundColor: '#dc2626',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: 5,
-                      padding: '10px 18px',
+                      background: '#dc2626',
+                      color: '#fff',
+                      border: 0,
+                      borderRadius: 4,
+                      padding: '8px 16px',
                       cursor: 'pointer',
                     }}
                   >
-                    {cancelingId === order.id
-                      ? 'Dang huy...'
-                      : 'Huy don hang'}
+                    {dangHuy === item.id ? 'Đang hủy...' : 'Hủy đơn hàng'}
                   </button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           ))}
         </div>
