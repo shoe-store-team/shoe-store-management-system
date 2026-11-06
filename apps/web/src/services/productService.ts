@@ -1,8 +1,13 @@
 import type { SanPham, TaoSanPhamDto, CapNhatSanPhamDto } from '../types/product';
+import type { ChiTietSanPham } from '../types/cart';
+import { request } from './request';
 
 const API_URL = 'http://localhost:3000/api/products';
 
 export const productService = {
+  // Khách xem chi tiết (size/màu/giá/tồn) - Người 3
+  layChiTiet: (id: string) => request<ChiTietSanPham>(`/catalog/${id}`),
+
   async layTatCa(): Promise<SanPham[]> {
     const res = await fetch(API_URL);
     if (!res.ok) throw new Error('Không lấy được danh sách sản phẩm');
