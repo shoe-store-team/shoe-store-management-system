@@ -12,6 +12,7 @@ import dashboardRouter from './modules/dashboard/dashboard.router';
 import inventoryRouter from './modules/inventory/inventory.router';
 import paymentRouter from './modules/payments/payment.router';
 import promotionRouter from './modules/promotions/promotion.router';
+import usersRouter from "./modules/users/users.router";
 
 const app = express();
 
@@ -43,5 +44,6 @@ app.use('/api/dashboard', dashboardRouter);
 app.use('/api/inventory', inventoryRouter);
 app.use('/api/payments', paymentRouter);
 app.use('/api/promotions', promotionRouter);
+app.use("/api/users", usersRouter);
 
 export default app;

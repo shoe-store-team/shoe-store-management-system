@@ -17,6 +17,33 @@ function AppRoutes() {
   const location = useLocation();
   const isAdmin = location.pathname.startsWith('/admin');
 
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import "./index.css";
+
+import { CustomerLayout } from "./layouts/CustomerLayout";
+import { AdminLayout } from "./layouts/AdminLayout";
+
+import { RegisterPage } from "./pages/auth/RegisterPage";
+import { LoginPage } from "./pages/auth/LoginPage";
+import { ForgotPasswordPage } from "./pages/auth/ForgotPasswordPage";
+
+import { ProductListPage } from "./pages/catalog/ProductListPage";
+import { ProductDetailPage } from "./pages/catalog/ProductDetailPage";
+import { CartPage } from "./pages/checkout/CartPage";
+import { ProfilePage } from "./pages/customer/ProfilePage";
+
+import { Page as DashboardPage } from "./pages/admin/dashboard/DashboardPage";
+import {  InventoryCheckPage } from "./pages/admin/inventory/InventoryCheckPage";
+import {  InventoryHistoryPage } from "./pages/admin/inventory/InventoryHistoryPage";
+import {  StockAdjustmentPage } from "./pages/admin/inventory/StockAdjustmentPage";
+import {  StockExportPage } from "./pages/admin/inventory/StockExportPage";
+import {  StockImportPage } from "./pages/admin/inventory/StockImportPage";
+import { Page as OrderManagementPage } from "./pages/admin/orders/OrderManagementPage";
+import {  ProductManagementPage } from "./pages/admin/products/ProductManagementPage";
+import { PromotionManagementPage } from "./pages/admin/promotions/PromotionManagementPage";
+import { Page as UserManagementPage } from "./pages/admin/users/UserManagementPage";
+
+export default function App() {
   return (
     <>
       {!isAdmin && location.pathname !== '/' && (
@@ -57,7 +84,7 @@ function AppRoutes() {
         {/* Trang không tồn tại */}
         <Route path="*" element={<ProductListPage />} />
       </Routes>
-    </>
+    </BrowserRouter>
   );
 }
 

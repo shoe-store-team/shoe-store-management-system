@@ -1,24 +1,22 @@
-﻿
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { productService } from '../../services/productService';
-import type { SanPham } from '../../types/product';
+﻿import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { productService } from "../../services/productService";
+import type { SanPham } from "../../types/product";
+import { useAuth } from "../../stores/authStore";
 
 const formatPrice = (price: number | string) =>
-  `${Number(price).toLocaleString('vi-VN')} đ`;
+  `${Number(price).toLocaleString("vi-VN")} đ`;
 
 // Lấy giá thấp nhất và cao nhất của các biến thể đang hoạt động.
 const layKhoangGia = (sp: SanPham) => {
-  const variants = sp.variants.filter(
-    (variant) => variant.isActive !== false
-  );
+  const variants = sp.variants.filter((variant) => variant.isActive !== false);
 
   if (variants.length === 0) {
-    return 'Hết hàng';
+    return "Hết hàng";
   }
 
   const prices = variants.map((variant) =>
-    Number(variant.priceOverride ?? sp.basePrice)
+    Number(variant.priceOverride ?? sp.basePrice),
   );
 
   const min = Math.min(...prices);
@@ -33,24 +31,22 @@ const layKhoangGia = (sp: SanPham) => {
 
 export function ProductListPage() {
   const [sanPhams, setSanPhams] = useState<SanPham[]>([]);
-  const [tuKhoa, setTuKhoa] = useState('');
-  const [danhMuc, setDanhMuc] = useState('Tất cả');
+  const [tuKhoa, setTuKhoa] = useState("");
+  const [danhMuc, setDanhMuc] = useState("Tất cả");
   const [dangTai, setDangTai] = useState(true);
-  const [loi, setLoi] = useState('');
-
+  const [loi, setLoi] = useState("");
+  const { isAuthenticated, user } = useAuth();
   // Tải lại danh sách sản phẩm khi người dùng nhấn nút.
   const taiSanPham = useCallback(async () => {
     setDangTai(true);
-    setLoi('');
+    setLoi("");
 
     try {
       const data = await productService.layTatCa();
       setSanPhams(data);
     } catch (error) {
       setLoi(
-        error instanceof Error
-          ? error.message
-          : 'Không thể tải sản phẩm.'
+        error instanceof Error ? error.message : "Không thể tải sản phẩm.",
       );
     } finally {
       setDangTai(false);
@@ -71,9 +67,7 @@ export function ProductListPage() {
       .catch((error: unknown) => {
         if (!daHuy) {
           setLoi(
-            error instanceof Error
-              ? error.message
-              : 'Không thể tải sản phẩm.'
+            error instanceof Error ? error.message : "Không thể tải sản phẩm.",
           );
         }
       })
@@ -94,12 +88,12 @@ export function ProductListPage() {
       .filter(
         (sp) =>
           sp.isActive !== false &&
-          sp.variants.some((v) => v.isActive !== false)
+          sp.variants.some((v) => v.isActive !== false),
       )
       .map((sp) => sp.category?.name)
       .filter((name): name is string => Boolean(name));
 
-    return ['Tất cả', ...new Set(categories)];
+    return ["Tất cả", ...new Set(categories)];
   }, [sanPhams]);
 
   // Lọc sản phẩm theo từ khóa và danh mục.
@@ -110,23 +104,20 @@ export function ProductListPage() {
 
       // Không hiển thị sản phẩm không có biến thể hoạt động.
       const coBienTheHoatDong = sp.variants.some(
-        (variant) => variant.isActive !== false
+        (variant) => variant.isActive !== false,
       );
 
       if (!coBienTheHoatDong) return false;
 
-      const keyword = tuKhoa.trim().toLocaleLowerCase('vi');
+      const keyword = tuKhoa.trim().toLocaleLowerCase("vi");
 
       const matchText =
         !keyword ||
-        sp.name.toLocaleLowerCase('vi').includes(keyword) ||
-        (sp.description ?? '')
-          .toLocaleLowerCase('vi')
-          .includes(keyword);
+        sp.name.toLocaleLowerCase("vi").includes(keyword) ||
+        (sp.description ?? "").toLocaleLowerCase("vi").includes(keyword);
 
       const matchCategory =
-        danhMuc === 'Tất cả' ||
-        sp.category?.name === danhMuc;
+        danhMuc === "Tất cả" || sp.category?.name === danhMuc;
 
       return matchText && matchCategory;
     });
@@ -142,7 +133,6 @@ export function ProductListPage() {
 
       {/* Header cửa hàng */}
       <header className="sl-store-header">
-
         {/* Tầng trên: Logo, tìm kiếm, tài khoản, giỏ hàng */}
         <div className="sl-store-header-top">
           <Link to="/" className="sl-store-logo">
@@ -160,24 +150,57 @@ export function ProductListPage() {
 
           <div className="sl-store-actions">
             <Link to="/cart" className="sl-cart-link">
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="20"
-    height="20"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.6"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M3 3h2l2.4 12.5a2 2 0 0 0 2 1.5h8.8a2 2 0 0 0 2-1.6L22 8H6" />
-    <circle cx="10" cy="21" r="1" />
-    <circle cx="19" cy="21" r="1" />
-  </svg>
-  <span>Giỏ hàng</span>
-</Link>
-            <Link to="/login">Tài khoản</Link>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M3 3h2l2.4 12.5a2 2 0 0 0 2 1.5h8.8a2 2 0 0 0 2-1.6L22 8H6" />
+                <circle cx="10" cy="21" r="1" />
+                <circle cx="19" cy="21" r="1" />
+              </svg>
+              <span>Giỏ hàng</span>
+            </Link>
+
+            <div className="sl-account">
+              <Link
+                to={isAuthenticated ? "/profile" : "/login"}
+                className="sl-account-icon"
+                aria-label={isAuthenticated ? "Hồ sơ cá nhân" : "Đăng nhập"}
+                title={
+                  isAuthenticated
+                    ? user?.name || user?.email || "Tài khoản"
+                    : "Đăng nhập"
+                }
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="12" cy="8" r="4" />
+                  <path d="M5 21v-2a7 7 0 0 1 14 0v2" />
+                </svg>
+              </Link>
+
+              {isAuthenticated && (
+                <div className="sl-account-tooltip">
+                  {user?.name || user?.email || "Tài khoản"}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -192,7 +215,6 @@ export function ProductListPage() {
       </header>
 
       <main className="sl-store-main">
-
         {/* Banner chính */}
         <section className="sl-hero">
           <div className="sl-hero-copy">
@@ -266,7 +288,7 @@ export function ProductListPage() {
             {danhMucs.map((item) => (
               <button
                 key={item}
-                className={danhMuc === item ? 'selected' : ''}
+                className={danhMuc === item ? "selected" : ""}
                 onClick={() => setDanhMuc(item)}
               >
                 {item}
@@ -276,9 +298,7 @@ export function ProductListPage() {
 
           {/* Trạng thái tải, lỗi hoặc danh sách sản phẩm */}
           {dangTai ? (
-            <div className="sl-store-message">
-              Đang tải bộ sưu tập...
-            </div>
+            <div className="sl-store-message">Đang tải bộ sưu tập...</div>
           ) : loi ? (
             <div className="sl-store-message sl-store-error">
               <p>{loi}</p>
@@ -294,7 +314,7 @@ export function ProductListPage() {
             <div className="sl-store-grid">
               {sanPhamHienThi.map((sp, index) => {
                 const activeVariants = sp.variants.filter(
-                  (variant) => variant.isActive !== false
+                  (variant) => variant.isActive !== false,
                 );
 
                 return (
@@ -305,11 +325,7 @@ export function ProductListPage() {
                   >
                     <div className="sl-store-product-image">
                       {sp.imageUrl ? (
-                        <img
-                          src={sp.imageUrl}
-                          alt={sp.name}
-                          loading="lazy"
-                        />
+                        <img src={sp.imageUrl} alt={sp.name} loading="lazy" />
                       ) : (
                         <div className="sl-store-image-placeholder">
                           Shoe Store DAY
@@ -317,9 +333,7 @@ export function ProductListPage() {
                       )}
 
                       {index === 0 && (
-                        <span className="sl-product-tag">
-                          Nổi bật
-                        </span>
+                        <span className="sl-product-tag">Nổi bật</span>
                       )}
 
                       <div className="sl-store-image-overlay">
@@ -329,16 +343,14 @@ export function ProductListPage() {
 
                     <div className="sl-store-product-meta">
                       <small>
-                        {sp.category?.name ?? 'Shoe Store Collection'}
+                        {sp.category?.name ?? "Shoe Store Collection"}
                       </small>
                       <strong>{sp.name}</strong>
                     </div>
 
                     <div className="sl-store-product-bottom">
                       <strong>{layKhoangGia(sp)}</strong>
-                      <small>
-                        {activeVariants.length} biến thể
-                      </small>
+                      <small>{activeVariants.length} biến thể</small>
                     </div>
                   </Link>
                 );
@@ -356,10 +368,7 @@ export function ProductListPage() {
               <br />
               Tự tin trong chuyển động.
             </h2>
-            <p>
-              Khám phá những lựa chọn phù hợp với phong cách riêng
-              của bạn.
-            </p>
+            <p>Khám phá những lựa chọn phù hợp với phong cách riêng của bạn.</p>
           </div>
 
           <div className="sl-banner-mark">
