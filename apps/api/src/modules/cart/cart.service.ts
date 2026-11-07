@@ -36,6 +36,12 @@ const toDto = (items: CartItemFull[]) => {
       stock: it.variant.stock,
       // false nếu ngừng bán hoặc tồn kho không đủ -> FE cảnh báo, không cho thanh toán
       available: sellable && it.quantity <= it.variant.stock,
+      // Lý do cụ thể để FE hiện đúng thông báo (null nếu mua được)
+      unavailableReason: !sellable
+        ? ('INACTIVE' as const)
+        : it.quantity > it.variant.stock
+          ? ('INSUFFICIENT_STOCK' as const)
+          : null,
     };
   });
   const subtotal = lines.reduce((sum, l) => sum + l.lineTotal, 0);
@@ -68,13 +74,19 @@ export async function addItem(userId: string, variantId: unknown, quantity: unkn
   });
   const newQty = (existing?.quantity ?? 0) + qty;
   if (newQty > variant.stock) {
-    throw new HttpError(400, `Chỉ còn ${variant.stock} sản phẩm trong kho`);
+    const dangCo = existing?.quantity ?? 0;
+    throw new HttpError(
+      400,
+      dangCo > 0
+        ? `Giỏ đã có ${dangCo} sản phẩm này, chỉ có thể thêm tối đa ${Math.max(variant.stock - dangCo, 0)} (kho còn ${variant.stock})`
+        : `Chỉ còn ${variant.stock} sản phẩm trong kho`,
+    );
   }
 
   await prisma.cartItem.upsert({
     where: { userId_variantId: { userId, variantId } },
     create: { userId, variantId, quantity: qty },
-    update: { quantity: newQty },
+    update: { quantity: { increment: qty } },
   });
   return getCart(userId);
 }
@@ -83,9 +95,12 @@ export async function updateItem(userId: string, itemId: string, quantity: unkno
   const qty = assertQuantity(quantity);
   const item = await prisma.cartItem.findFirst({
     where: { id: itemId, userId },
-    include: { variant: true },
+    include: { variant: { include: { product: true } } },
   });
   if (!item) throw new HttpError(404, 'Không tìm thấy dòng giỏ hàng');
+  if (!item.variant.isActive || !item.variant.product.isActive) {
+    throw new HttpError(409, 'Sản phẩm đã ngừng bán, vui lòng xóa khỏi giỏ hàng');
+  }
   if (qty > item.variant.stock) {
     throw new HttpError(400, `Chỉ còn ${item.variant.stock} sản phẩm trong kho`);
   }
