@@ -299,7 +299,7 @@ export function ProductListPage() {
 
                 return (
                   <Link
-                    to={`/products/${sp.id}`}
+                    to={`/product/${sp.id}`}
                     className="sl-store-product"
                     key={sp.id}
                   >
