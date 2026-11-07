@@ -8,6 +8,43 @@ const normalizeCode = (code: unknown): string => {
   return code.trim().toUpperCase();
 };
 
+/** Chuyển giá trị client gửi lên thành Decimal; sai định dạng -> 400 (không để lọt thành lỗi 500). */
+const toDecimal = (v: unknown, field: string, min = 0): Prisma.Decimal => {
+  if (typeof v !== "number" && typeof v !== "string")
+    throw new HttpError(400, `${field} không hợp lệ`);
+  if (typeof v === "string" && !v.trim())
+    throw new HttpError(400, `${field} không hợp lệ`);
+  let d: Prisma.Decimal;
+  try {
+    d = new Prisma.Decimal(v);
+  } catch {
+    throw new HttpError(400, `${field} không hợp lệ`);
+  }
+  if (!d.isFinite()) throw new HttpError(400, `${field} không hợp lệ`);
+  if (d.lt(min)) throw new HttpError(400, `${field} phải >= ${min}`);
+  return d;
+};
+
+// const toDate = (v: unknown, field: string): Date => {
+//   const d = new Date(v as string | number);
+//   if (typeof v !== "string" && typeof v !== "number")
+//     throw new HttpError(400, `${field} không hợp lệ`);
+//   if (Number.isNaN(d.getTime()))
+//     throw new HttpError(400, `${field} không hợp lệ`);
+//   return d;
+// };
+const toDate = (v: unknown, field: string): Date => {
+  if (typeof v !== "string" && typeof v !== "number") {
+    throw new HttpError(400, `${field} không hợp lệ`);
+  }
+
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) {
+    throw new HttpError(400, `${field} không hợp lệ`);
+  }
+
+  return d;
+};
 /**
  * Tính số tiền giảm (VND, làm tròn xuống).
  * PERCENTAGE: subtotal * value / 100, không vượt maxDiscount (nếu có).
@@ -44,10 +81,12 @@ export function assertPromotionUsable(
   }
   if (subtotal.lte(0)) throw new HttpError(400, "Giỏ hàng đang trống");
   if (subtotal.lt(promo.minOrderAmount)) {
-    throw new HttpError(
-      400,
-      `Đơn tối thiểu ${promo.minOrderAmount.toString()}đ để dùng mã này`,
-    );
+    if (subtotal.lt(promo.minOrderAmount)) {
+      throw new HttpError(
+        400,
+        `Đơn tối thiểu ${promo.minOrderAmount.toNumber().toLocaleString("vi-VN")}đ để dùng mã này`,
+      );
+    }
   }
 }
 
@@ -72,6 +111,33 @@ export async function validateForSubtotal(
   };
 }
 
+/**
+ * DÀNH CHO M4 - gọi trong cùng transaction tạo đơn:
+ *   const { promotionId, discountAmount } = await applyPromotionInTx(tx, code, subtotal);
+ * `subtotal` phải do SERVER tính từ giỏ/đơn, không lấy từ client.
+ * Kiểm tra lại toàn bộ điều kiện và tăng usageCount nguyên tử, nên nhiều đơn cùng lúc
+ * cũng không vượt usageLimit.
+ */
+export async function applyPromotionInTx(
+  tx: Prisma.TransactionClient,
+  code: unknown,
+  subtotal: Prisma.Decimal,
+) {
+  const promo = await tx.promotion.findUnique({
+    where: { code: normalizeCode(code) },
+  });
+  assertPromotionUsable(promo, subtotal);
+  const updated = await tx.$executeRaw`
+    UPDATE "Promotion" SET "usageCount" = "usageCount" + 1
+    WHERE "id" = ${promo!.id} AND ("usageLimit" IS NULL OR "usageCount" < "usageLimit")`;
+  if (updated === 0)
+    throw new HttpError(400, "Mã giảm giá đã hết lượt sử dụng");
+  return {
+    promotionId: promo!.id,
+    discountAmount: calculateDiscount(promo!, subtotal),
+  };
+}
+
 // ---------- Admin CRUD ----------
 
 const DISCOUNT_TYPES = ["PERCENTAGE", "FIXED_AMOUNT"];
@@ -88,38 +154,7 @@ type PromotionInput = {
   usageLimit?: unknown;
   isActive?: unknown;
 };
-// function parseInput(body: unknown, partial: boolean) {
-//   const data: Prisma.PromotionUncheckedCreateInput = {};
-//   const need = (k: string) => {
-//     if (!partial && body?.[k] === undefined) throw new HttpError(400, `Thiếu trường ${k}`);
-//     return body?.[k] !== undefined;
-//   };
 
-//   if (need('code')) data.code = normalizeCode(body.code);
-//   if (need('name')) data.name = String(body.name).trim();
-//   if (body?.description !== undefined) data.description = body.description;
-//   if (need('discountType')) {
-//     if (!DISCOUNT_TYPES.includes(body.discountType)) throw new HttpError(400, 'discountType không hợp lệ');
-//     data.discountType = body.discountType;
-//   }
-//   if (need('discountValue')) {
-//     if (!(Number(body.discountValue) > 0)) throw new HttpError(400, 'discountValue phải > 0');
-//     data.discountValue = new Prisma.Decimal(body.discountValue);
-//   }
-//   if (body?.maxDiscount !== undefined) data.maxDiscount = body.maxDiscount === null ? null : new Prisma.Decimal(body.maxDiscount);
-//   if (body?.minOrderAmount !== undefined) data.minOrderAmount = new Prisma.Decimal(body.minOrderAmount);
-//   if (need('startsAt')) data.startsAt = new Date(body.startsAt);
-//   if (need('endsAt')) data.endsAt = new Date(body.endsAt);
-//   if (body?.usageLimit !== undefined) data.usageLimit = body.usageLimit;
-//   if (body?.isActive !== undefined) data.isActive = Boolean(body.isActive);
-
-//   if (data.discountType === 'PERCENTAGE' && Number(data.discountValue) > 100) {    throw new HttpError(400, 'Giảm theo % không được vượt 100');
-//   }
-//   if (data.startsAt && data.endsAt && data.endsAt <= data.startsAt) {
-//     throw new HttpError(400, 'endsAt phải sau startsAt');
-//   }
-//   return data;
-// }
 function parseInput(
   body: unknown,
   partial: boolean,
@@ -139,9 +174,16 @@ function parseInput(
   };
 
   if (need("code")) data.code = normalizeCode(input.code);
-  if (need("name")) data.name = String(input.name).trim();
-  if (input.description !== undefined)
+
+  if (need("name")) {
+    const name = typeof input.name === "string" ? input.name.trim() : "";
+    if (!name) throw new HttpError(400, "name không được để trống");
+    data.name = name;
+  }
+
+  if (input.description !== undefined) {
     data.description = input.description as string;
+  }
 
   if (need("discountType")) {
     if (!DISCOUNT_TYPES.includes(String(input.discountType))) {
@@ -152,31 +194,39 @@ function parseInput(
   }
 
   if (need("discountValue")) {
-    if (!(Number(input.discountValue) > 0)) {
-      throw new HttpError(400, "discountValue phải > 0");
-    }
-    data.discountValue = new Prisma.Decimal(
-      input.discountValue as number | string,
-    );
+    const value = toDecimal(input.discountValue, "discountValue");
+    if (value.lte(0)) throw new HttpError(400, "discountValue phải > 0");
+    data.discountValue = value;
   }
 
   if (input.maxDiscount !== undefined) {
     data.maxDiscount =
       input.maxDiscount === null
         ? null
-        : new Prisma.Decimal(input.maxDiscount as number | string);
+        : toDecimal(input.maxDiscount, "maxDiscount");
   }
 
   if (input.minOrderAmount !== undefined) {
-    data.minOrderAmount = new Prisma.Decimal(
-      input.minOrderAmount as number | string,
-    );
+    data.minOrderAmount = toDecimal(input.minOrderAmount, "minOrderAmount");
   }
 
-  if (need("startsAt")) data.startsAt = new Date(String(input.startsAt));
-  if (need("endsAt")) data.endsAt = new Date(String(input.endsAt));
+  if (need("startsAt")) data.startsAt = toDate(input.startsAt, "startsAt");
+  if (need("endsAt")) data.endsAt = toDate(input.endsAt, "endsAt");
 
   if (input.usageLimit !== undefined) {
+    if (
+      input.usageLimit !== null &&
+      !(
+        typeof input.usageLimit === "number" &&
+        Number.isInteger(input.usageLimit) &&
+        input.usageLimit >= 1
+      )
+    ) {
+      throw new HttpError(
+        400,
+        "usageLimit phải là số nguyên >= 1 (hoặc null nếu không giới hạn)",
+      );
+    }
     data.usageLimit = input.usageLimit as number | null;
   }
 
@@ -184,21 +234,35 @@ function parseInput(
     data.isActive = Boolean(input.isActive);
   }
 
-  if (data.discountType === "PERCENTAGE" && Number(data.discountValue) > 100) {
-    throw new HttpError(400, "Giảm theo % không được vượt 100");
-  }
-
-  if (data.startsAt && data.endsAt && data.endsAt <= data.startsAt) {
-    throw new HttpError(400, "endsAt phải sau startsAt");
-  }
-
   return data;
 }
+
 export const listPromotions = () =>
   prisma.promotion.findMany({ orderBy: { createdAt: "desc" } });
 
+function assertPromotionShape(s: {
+  discountType: string;
+  discountValue: Prisma.Decimal;
+  startsAt: Date;
+  endsAt: Date;
+}) {
+  if (s.discountType === "PERCENTAGE" && s.discountValue.gt(100)) {
+    throw new HttpError(400, "Giảm theo % không được vượt 100");
+  }
+
+  if (s.endsAt <= s.startsAt) {
+    throw new HttpError(400, "endsAt phải sau startsAt");
+  }
+}
+//
 export async function createPromotion(body: unknown) {
   const data = parseInput(body, false);
+  assertPromotionShape({
+    discountType: data.discountType,
+    discountValue: data.discountValue as Prisma.Decimal,
+    startsAt: data.startsAt as Date,
+    endsAt: data.endsAt as Date,
+  });
   try {
     return await prisma.promotion.create({ data });
   } catch (e: unknown) {
@@ -214,6 +278,25 @@ export async function createPromotion(body: unknown) {
 
 export async function updatePromotion(id: string, body: unknown) {
   const data = parseInput(body, true);
+  const touchesShape = [
+    "discountType",
+    "discountValue",
+    "startsAt",
+    "endsAt",
+  ].some((k) => k in data);
+  if (touchesShape) {
+    const existing = await prisma.promotion.findUnique({ where: { id } });
+    if (!existing) throw new HttpError(404, "Không tìm thấy khuyến mãi");
+    assertPromotionShape({
+      discountType:
+        (data.discountType as string | undefined) ?? existing.discountType,
+      discountValue:
+        (data.discountValue as Prisma.Decimal | undefined) ??
+        existing.discountValue,
+      startsAt: (data.startsAt as Date | undefined) ?? existing.startsAt,
+      endsAt: (data.endsAt as Date | undefined) ?? existing.endsAt,
+    });
+  }
   try {
     return await prisma.promotion.update({ where: { id }, data });
   } catch (e: unknown) {
