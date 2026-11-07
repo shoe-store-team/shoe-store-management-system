@@ -1,4 +1,5 @@
-import type { NextFunction, Request, RequestHandler, Response } from 'express';
+//  import type { NextFunction, Request, RequestHandler, Response } from 'express';
+ import type { Request, RequestHandler, Response } from 'express';
 import { prisma } from '../../config/prisma';
 
 export class HttpError extends Error {
@@ -13,7 +14,7 @@ export class HttpError extends Error {
 /** Bọc handler async: HttpError -> JSON { message }, lỗi khác -> error middleware. */
 export const wrap =
   (fn: (req: Request, res: Response) => Promise<unknown>): RequestHandler =>
-  async (req: Request, res: Response, next: NextFunction) => {
+  async (req: Request, res: Response) => {
     try {
       await fn(req, res);
     } catch (err) {
@@ -33,7 +34,7 @@ export const wrap =
  * TODO: xóa nhánh x-user-id khi auth hoàn thiện.
  */
 export function currentUserId(req: Request): string {
-  const user = (req as any).user as { id?: string } | undefined;
+ const user = req.authUser as { id?: string } | undefined;
   if (user?.id) return user.id;
   if (process.env.NODE_ENV !== 'production') {
     const header = req.header('x-user-id');
@@ -45,7 +46,7 @@ export function currentUserId(req: Request): string {
 export async function assertAdmin(req: Request): Promise<void> {
   const id = currentUserId(req);
   const role =
-    ((req as any).user?.role as string | undefined) ??
+    (req.authUser?.role as string | undefined) ??
     (await prisma.user.findUnique({ where: { id }, select: { role: true } }))?.role;
   if (role !== 'ADMIN') throw new HttpError(403, 'Chỉ quản trị viên được thực hiện thao tác này');
 }
