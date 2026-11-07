@@ -463,6 +463,7 @@ export class InventoryService {
             variant: true,
           },
         },
+        createdBy: true,
         confirmedBy: true,
       },
       orderBy: {
