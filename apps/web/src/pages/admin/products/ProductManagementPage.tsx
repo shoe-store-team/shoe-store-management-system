@@ -1,4 +1,3 @@
-
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ProductForm } from '../../../components/ProductForm';
 import { ProductTable } from '../../../components/ProductTable';
@@ -20,7 +19,7 @@ export function ProductManagementPage() {
   const [loi, setLoi] = useState('');
   const [thongBao, setThongBao] = useState('');
 
-  // Tải lại danh sách sản phẩm khi cần làm mới hoặc sau CRUD.
+  // Tải lại danh sách sản phẩm.
   const taiSanPham = useCallback(async () => {
     setDangTai(true);
     setLoi('');
@@ -30,16 +29,14 @@ export function ProductManagementPage() {
       setSanPhams(data);
     } catch (error) {
       setLoi(
-        error instanceof Error
-          ? error.message
-          : 'Không thể tải sản phẩm.'
+        error instanceof Error ? error.message : 'Không thể tải sản phẩm.'
       );
     } finally {
       setDangTai(false);
     }
   }, []);
 
-  // Tải dữ liệu lần đầu khi mở trang.
+  // Tải sản phẩm lần đầu.
   useEffect(() => {
     let daHuy = false;
 
@@ -53,9 +50,7 @@ export function ProductManagementPage() {
       } catch (error) {
         if (!daHuy) {
           setLoi(
-            error instanceof Error
-              ? error.message
-              : 'Không thể tải sản phẩm.'
+            error instanceof Error ? error.message : 'Không thể tải sản phẩm.'
           );
         }
       } finally {
@@ -72,7 +67,7 @@ export function ProductManagementPage() {
     };
   }, []);
 
-  // Lấy danh sách danh mục từ dữ liệu sản phẩm.
+  // Lấy danh sách danh mục.
   const danhMucs = useMemo(() => {
     const map = new Map<string, { id: string; name: string }>();
 
@@ -109,14 +104,14 @@ export function ProductManagementPage() {
     [sanPhams, tuKhoa, danhMucLoc]
   );
 
-  // Tính tổng số lượng tồn kho.
+  // Tổng số lượng tồn kho.
   const tongTonKho = sanPhams.reduce(
     (sum, sp) =>
       sum + sp.variants.reduce((variantSum, v) => variantSum + v.stock, 0),
     0
   );
 
-  // Đếm sản phẩm có tổng tồn kho không quá 5.
+  // Số sản phẩm có tổng tồn kho không quá 5.
   const canhBaoTon = sanPhams.filter(
     (sp) =>
       sp.variants.reduce((sum, v) => sum + v.stock, 0) <= 5
@@ -136,9 +131,7 @@ export function ProductManagementPage() {
       setThongBao('Đã thêm sản phẩm thành công.');
     } catch (error) {
       setLoi(
-        error instanceof Error
-          ? error.message
-          : 'Không thể thêm sản phẩm.'
+        error instanceof Error ? error.message : 'Không thể thêm sản phẩm.'
       );
     } finally {
       setDangXuLy(false);
@@ -163,9 +156,7 @@ export function ProductManagementPage() {
       setThongBao('Đã cập nhật thông tin sản phẩm.');
     } catch (error) {
       setLoi(
-        error instanceof Error
-          ? error.message
-          : 'Không thể cập nhật sản phẩm.'
+        error instanceof Error ? error.message : 'Không thể cập nhật sản phẩm.'
       );
     } finally {
       setDangXuLy(false);
@@ -196,9 +187,7 @@ export function ProductManagementPage() {
       }
     } catch (error) {
       setLoi(
-        error instanceof Error
-          ? error.message
-          : 'Không thể xóa sản phẩm.'
+        error instanceof Error ? error.message : 'Không thể xóa sản phẩm.'
       );
     }
   }
@@ -220,193 +209,140 @@ export function ProductManagementPage() {
   }
 
   return (
-    <div className="sl-admin-shell">
-      <aside className="sl-sidebar">
-        <a className="sl-brand" href="/admin/products">
-          <span className="sl-brand-mark">S</span>
-          <span>
-            Shoe <span> Store</span>
-          </span>
-        </a>
-
-        <p className="sl-nav-label">TỔNG QUAN</p>
-
-        <nav className="sl-side-nav">
-          <a href="/admin/products" className="sl-side-link">
-            <span>▦</span> Bảng điều khiển
-          </a>
-          <a href="/admin/products" className="sl-side-link active">
-            <span>◈</span> Sản phẩm
-          </a>
-          <a href="/admin/products" className="sl-side-link">
-            <span>▤</span> Đơn hàng
-          </a>
-          <a href="/admin/products" className="sl-side-link">
-            <span>▧</span> Kho hàng
-          </a>
-          <a href="/admin/products" className="sl-side-link">
-            <span>◇</span> Khuyến mãi
-          </a>
-          <a href="/" className="sl-side-link">
-            <span>⌂</span> Xem cửa hàng
-          </a>
-        </nav>
-
-        <div className="sl-sidebar-promo">
-          <span>✦</span>
-          <strong>Quản lý tinh gọn</strong>
-          <p>Theo dõi sản phẩm và số lượng tồn kho tại một nơi.</p>
-        </div>
-
-        <div className="sl-profile">
-          <div className="sl-avatar">AD</div>
-          <span>
-            <strong>Quản trị viên</strong>
-            <small>ADMIN</small>
-          </span>
-          <span className="sl-profile-more">···</span>
-        </div>
-      </aside>
-
-      <main className="sl-admin-main">
-        <header className="sl-admin-topbar">
-          <div className="sl-breadcrumb">
-            Quản trị <span>/</span> <strong>Sản phẩm</strong>
-          </div>
-
-          <div className="sl-topbar-right">
-            <label className="sl-top-search">
-              ⌕
-              <input
-                value={tuKhoa}
-                onChange={(e) => setTuKhoa(e.target.value)}
-                placeholder="Tìm sản phẩm, size, màu..."
-              />
-            </label>
-
-            <span className="sl-topbar-divider" />
-            <span className="sl-admin-date">Shoe Store DAY · QUẢN TRỊ</span>
-          </div>
-        </header>
-
-        <div className="sl-admin-content">
-          <div className="sl-page-heading">
-            <div>
-              <p className="sl-eyebrow">PRODUCT MANAGEMENT</p>
-              <h1>Quản lý sản phẩm</h1>
-              <p>
-                Theo dõi danh mục, biến thể và tình trạng kinh doanh của cửa
-                hàng.
-              </p>
-            </div>
-
-            <button
-              className="sl-button sl-button-dark"
-              onClick={batDauThem}
-            >
-              ＋ Thêm sản phẩm
-            </button>
-          </div>
-
-          <div className="sl-stat-grid">
-            <article className="sl-stat-card">
-              <span className="sl-stat-icon">◈</span>
-              <small>TỔNG SẢN PHẨM</small>
-              <strong>{sanPhams.length}</strong>
-              <em>Trong danh mục</em>
-            </article>
-
-            <article className="sl-stat-card">
-              <span className="sl-stat-icon sage">▦</span>
-              <small>TỔNG TỒN KHO</small>
-              <strong>{tongTonKho.toLocaleString('vi-VN')}</strong>
-              <em>Tất cả biến thể</em>
-            </article>
-
-            <article className="sl-stat-card">
-              <span className="sl-stat-icon sand">◇</span>
-              <small>DANH MỤC</small>
-              <strong>{danhMucs.length}</strong>
-              <em>Đang được sử dụng</em>
-            </article>
-
-            <article className="sl-stat-card">
-              <span className="sl-stat-icon rose">!</span>
-              <small>SẢN PHẨM TỒN THẤP</small>
-              <strong>{canhBaoTon}</strong>
-              <em>Có tổng tồn ≤ 5</em>
-            </article>
-          </div>
-
-          {loi && <div className="sl-alert sl-alert-error">{loi}</div>}
-
-          {thongBao && (
-            <div className="sl-alert sl-alert-success">{thongBao}</div>
-          )}
-
-          {hienForm && (
-            <ProductForm
-              key={sanPhamDangSua?.id ?? 'new'}
-              sanPhamDangSua={sanPhamDangSua}
-              danhMucs={danhMucs}
-              dangXuLy={dangXuLy}
-              onThem={themSanPham}
-              onCapNhat={capNhatSanPham}
-              onHuySua={() => {
-                setHienForm(false);
-                setSanPhamDangSua(null);
-              }}
-            />
-          )}
-
-          <section className="sl-panel sl-admin-data">
-            <div className="sl-panel-heading sl-list-heading">
-              <div>
-                <h2>Danh sách sản phẩm</h2>
-                <p>{sanPhamHienThi.length} kết quả phù hợp</p>
-              </div>
-
-              <div className="sl-list-controls">
-                <select
-                  value={danhMucLoc}
-                  onChange={(e) => setDanhMucLoc(e.target.value)}
-                >
-                  <option value="all">Tất cả danh mục</option>
-
-                  {danhMucs.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
-
-                <button
-                  className="sl-button sl-button-light"
-                  onClick={() => void taiSanPham()}
-                >
-                  ↻ Làm mới
-                </button>
-              </div>
-            </div>
-
-            {dangTai ? (
-              <div className="sl-loading">
-                Đang tải danh sách sản phẩm...
-              </div>
-            ) : (
-              <ProductTable
-                sanPhams={sanPhamHienThi}
-                onSua={batDauSua}
-                onXoa={xoaSanPham}
-              />
-            )}
-          </section>
-
-          <p className="sl-page-footnote">
-            Shoe Store Admin · Dữ liệu được tải trực tiếp từ Shoe Store API.
+    <div className="admin-page">
+      <div className="sl-page-heading">
+        <div>
+          <p className="sl-eyebrow">PRODUCT MANAGEMENT</p>
+          <h1>Quản lý sản phẩm</h1>
+          <p>
+            Theo dõi danh mục, biến thể và tình trạng kinh doanh của cửa hàng.
           </p>
         </div>
-      </main>
+
+        <button
+          type="button"
+          className="sl-button sl-button-dark"
+          onClick={batDauThem}
+        >
+          ＋ Thêm sản phẩm
+        </button>
+      </div>
+
+      <div className="sl-product-search">
+        <label className="sl-top-search">
+          ⌕
+          <input
+            value={tuKhoa}
+            onChange={(e) => setTuKhoa(e.target.value)}
+            placeholder="Tìm sản phẩm, size, màu..."
+          />
+        </label>
+      </div>
+
+      <div className="sl-stat-grid">
+        <article className="sl-stat-card">
+          <span className="sl-stat-icon">◈</span>
+          <small>TỔNG SẢN PHẨM</small>
+          <strong>{sanPhams.length}</strong>
+          <em>Trong danh mục</em>
+        </article>
+
+        <article className="sl-stat-card">
+          <span className="sl-stat-icon sage">▦</span>
+          <small>TỔNG TỒN KHO</small>
+          <strong>{tongTonKho.toLocaleString('vi-VN')}</strong>
+          <em>Tất cả biến thể</em>
+        </article>
+
+        <article className="sl-stat-card">
+          <span className="sl-stat-icon sand">◇</span>
+          <small>DANH MỤC</small>
+          <strong>{danhMucs.length}</strong>
+          <em>Đang được sử dụng</em>
+        </article>
+
+        <article className="sl-stat-card">
+          <span className="sl-stat-icon rose">!</span>
+          <small>SẢN PHẨM TỒN THẤP</small>
+          <strong>{canhBaoTon}</strong>
+          <em>Có tổng tồn ≤ 5</em>
+        </article>
+      </div>
+
+      {loi && (
+        <div className="sl-alert sl-alert-error">
+          {loi}
+        </div>
+      )}
+
+      {thongBao && (
+        <div className="sl-alert sl-alert-success">
+          {thongBao}
+        </div>
+      )}
+
+      {hienForm && (
+        <ProductForm
+          key={sanPhamDangSua?.id ?? 'new'}
+          sanPhamDangSua={sanPhamDangSua}
+          danhMucs={danhMucs}
+          dangXuLy={dangXuLy}
+          onThem={themSanPham}
+          onCapNhat={capNhatSanPham}
+          onHuySua={() => {
+            setHienForm(false);
+            setSanPhamDangSua(null);
+          }}
+        />
+      )}
+
+      <section className="sl-panel sl-admin-data">
+        <div className="sl-panel-heading sl-list-heading">
+          <div>
+            <h2>Danh sách sản phẩm</h2>
+            <p>{sanPhamHienThi.length} kết quả phù hợp</p>
+          </div>
+
+          <div className="sl-list-controls">
+            <select
+              value={danhMucLoc}
+              onChange={(e) => setDanhMucLoc(e.target.value)}
+            >
+              <option value="all">Tất cả danh mục</option>
+
+              {danhMucs.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+
+            <button
+              type="button"
+              className="sl-button sl-button-light"
+              onClick={() => void taiSanPham()}
+            >
+              ↻ Làm mới
+            </button>
+          </div>
+        </div>
+
+        {dangTai ? (
+          <div className="sl-loading">
+            Đang tải danh sách sản phẩm...
+          </div>
+        ) : (
+          <ProductTable
+            sanPhams={sanPhamHienThi}
+            onSua={batDauSua}
+            onXoa={xoaSanPham}
+          />
+        )}
+      </section>
+
+      <p className="sl-page-footnote">
+        Shoe Store Admin · Dữ liệu được tải trực tiếp từ Shoe Store API.
+      </p>
     </div>
   );
 }

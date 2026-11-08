@@ -38,9 +38,9 @@ export type TaoSanPhamDto = {
 };
 
 export type CapNhatSanPhamDto = {
-  name: string;
-  description: string;
-  basePrice: number;
+  name?: string;
+  description?: string | null;
+  basePrice?: number;
   imageUrl?: string | null;
   categoryId?: string | null;
   isActive?: boolean;
