@@ -1,4 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from "react";
+import type { FormEvent } from "react";
 import "./UserManagementPage.css";
 
 interface User {
@@ -15,6 +16,34 @@ interface EditForm {
   email: string;
   phone: string;
   role: string;
+}
+
+const API = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+
+// Hàm gọi API
+async function request(url: string, options: RequestInit = {}) {
+  const token = localStorage.getItem("token");
+
+  if (!token) {
+    throw new Error("Vui lòng đăng nhập lại.");
+  }
+
+  const res = await fetch(`${API}${url}`, {
+    ...options,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+
+  const result = await res.json();
+
+  if (!res.ok) {
+    throw new Error(result.message || "Yêu cầu thất bại");
+  }
+
+  return result;
 }
 
 export function Page() {
@@ -35,30 +64,7 @@ export function Page() {
     role: "CUSTOMER",
   });
 
-  const API = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
-
-  async function request(url: string, options: RequestInit = {}) {
-    const token = localStorage.getItem("token");
-    if (!token) throw new Error("Vui lòng đăng nhập lại.");
-
-    const res = await fetch(`${API}${url}`, {
-      ...options,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-        ...options.headers,
-      },
-    });
-
-    const result = await res.json();
-
-    if (!res.ok) {
-      throw new Error(result.message || "Yêu cầu thất bại");
-    }
-
-    return result;
-  }
-
+  // Tải danh sách người dùng
   useEffect(() => {
     let cancelled = false;
 
@@ -68,10 +74,13 @@ export function Page() {
 
         if (!cancelled) {
           setUsers(result.data ?? []);
+          setError("");
         }
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Lỗi kết nối API");
+          setError(
+            err instanceof Error ? err.message : "Lỗi kết nối API",
+          );
         }
       } finally {
         if (!cancelled) {
@@ -86,40 +95,17 @@ export function Page() {
       cancelled = true;
     };
   }, []);
-  useEffect(() => {
-    let cancelled = false;
 
-    async function fetchUsers() {
-      try {
-        const result = await request("/users");
-
-        if (!cancelled) {
-          setUsers(result.data ?? []);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Lỗi tải danh sách");
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    }
-
-    void fetchUsers();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
+  // Tìm kiếm và lọc người dùng
   const filteredUsers = useMemo(() => {
     return users.filter((user) => {
-      const text = `${user.name} ${user.email} ${user.phone}`.toLowerCase();
+      const text =
+        `${user.name} ${user.email} ${user.phone}`.toLowerCase();
 
       const matchKeyword = text.includes(keyword.toLowerCase());
-      const matchRole = roleFilter === "ALL" || user.role === roleFilter;
+
+      const matchRole =
+        roleFilter === "ALL" || user.role === roleFilter;
 
       const matchStatus =
         statusFilter === "ALL" ||
@@ -130,9 +116,11 @@ export function Page() {
     });
   }, [users, keyword, roleFilter, statusFilter]);
 
+  // Mở form chỉnh sửa
   function openEdit(user: User) {
     setMessage("");
     setEditingUser(user);
+
     setForm({
       name: user.name,
       email: user.email,
@@ -141,8 +129,10 @@ export function Page() {
     });
   }
 
-  async function saveUser(e: React.FormEvent<HTMLFormElement>) {
+  // Lưu thông tin người dùng
+  async function saveUser(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+
     if (!editingUser || saving) return;
 
     setSaving(true);
@@ -155,22 +145,33 @@ export function Page() {
       });
 
       setUsers((prev) =>
-        prev.map((u) => (u.id === editingUser.id ? result.data : u)),
+        prev.map((user) =>
+          user.id === editingUser.id ? result.data : user,
+        ),
       );
 
       setEditingUser(null);
       setMessage("Cập nhật tài khoản thành công.");
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Không thể cập nhật");
+      setMessage(
+        err instanceof Error
+          ? err.message
+          : "Không thể cập nhật",
+      );
     } finally {
       setSaving(false);
     }
   }
 
+  // Khóa hoặc mở khóa tài khoản
   async function toggleStatus(user: User) {
     const action = user.isActive ? "khóa" : "mở khóa";
 
-    if (!window.confirm(`Bạn có chắc muốn ${action} ${user.email}?`)) {
+    if (
+      !window.confirm(
+        `Bạn có chắc muốn ${action} ${user.email}?`,
+      )
+    ) {
       return;
     }
 
@@ -179,15 +180,23 @@ export function Page() {
     try {
       const result = await request(`/users/${user.id}/status`, {
         method: "PATCH",
-        body: JSON.stringify({ isActive: !user.isActive }),
+        body: JSON.stringify({
+          isActive: !user.isActive,
+        }),
       });
 
-      setUsers((prev) => prev.map((u) => (u.id === user.id ? result.data : u)));
+      setUsers((prev) =>
+        prev.map((item) =>
+          item.id === user.id ? result.data : item,
+        ),
+      );
 
       setMessage(`Đã ${action} tài khoản thành công.`);
     } catch (err) {
       setMessage(
-        err instanceof Error ? err.message : "Không thể cập nhật trạng thái",
+        err instanceof Error
+          ? err.message
+          : "Không thể cập nhật trạng thái",
       );
     }
   }
@@ -199,7 +208,10 @@ export function Page() {
           <h2>Quản lý người dùng</h2>
           <p>Quản lý tài khoản khách hàng và nhân viên kho</p>
         </div>
-        <div className="user-count">{users.length} tài khoản</div>
+
+        <div className="user-count">
+          {users.length} tài khoản
+        </div>
       </div>
 
       <div className="user-toolbar">
@@ -216,7 +228,9 @@ export function Page() {
         >
           <option value="ALL">Tất cả vai trò</option>
           <option value="CUSTOMER">Khách hàng</option>
-          <option value="WAREHOUSE_STAFF">Nhân viên kho</option>
+          <option value="WAREHOUSE_STAFF">
+            Nhân viên kho
+          </option>
         </select>
 
         <select
@@ -230,7 +244,11 @@ export function Page() {
       </div>
 
       {message && <p role="status">{message}</p>}
-      {loading && <p className="user-message">Đang tải dữ liệu...</p>}
+
+      {loading && (
+        <p className="user-message">Đang tải dữ liệu...</p>
+      )}
+
       {error && <p className="user-error">{error}</p>}
 
       {!loading && !error && (
@@ -257,11 +275,15 @@ export function Page() {
                         <div className="user-avatar">
                           {user.name?.charAt(0).toUpperCase() || "U"}
                         </div>
+
                         <span>{user.name}</span>
                       </div>
                     </td>
+
                     <td>{user.email}</td>
+
                     <td>{user.phone || "—"}</td>
+
                     <td>
                       <span className="role-badge">
                         {user.role === "CUSTOMER"
@@ -271,24 +293,33 @@ export function Page() {
                             : user.role}
                       </span>
                     </td>
+
                     <td>
                       <span
                         className={`status-badge ${
-                          user.isActive ? "status-active" : "status-locked"
+                          user.isActive
+                            ? "status-active"
+                            : "status-locked"
                         }`}
                       >
-                        {user.isActive ? "● Hoạt động" : "● Đã khóa"}
+                        {user.isActive
+                          ? "● Hoạt động"
+                          : "● Đã khóa"}
                       </span>
                     </td>
+
                     <td>
                       <div className="user-actions">
                         <button
+                          type="button"
                           className="btn-edit"
                           onClick={() => openEdit(user)}
                         >
                           Sửa
                         </button>
+
                         <button
+                          type="button"
                           className="btn-lock"
                           onClick={() => void toggleStatus(user)}
                         >
@@ -326,7 +357,9 @@ export function Page() {
               <input
                 required
                 value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, name: e.target.value })
+                }
               />
             </label>
 
@@ -336,7 +369,9 @@ export function Page() {
                 required
                 type="email"
                 value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, email: e.target.value })
+                }
               />
             </label>
 
@@ -345,7 +380,9 @@ export function Page() {
               <input
                 required
                 value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, phone: e.target.value })
+                }
               />
             </label>
 
@@ -353,10 +390,14 @@ export function Page() {
               Vai trò
               <select
                 value={form.role}
-                onChange={(e) => setForm({ ...form, role: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, role: e.target.value })
+                }
               >
                 <option value="CUSTOMER">Khách hàng</option>
-                <option value="WAREHOUSE_STAFF">Nhân viên kho</option>
+                <option value="WAREHOUSE_STAFF">
+                  Nhân viên kho
+                </option>
               </select>
             </label>
 
@@ -368,7 +409,12 @@ export function Page() {
               >
                 Hủy
               </button>
-              <button type="submit" className="btn-edit" disabled={saving}>
+
+              <button
+                type="submit"
+                className="btn-edit"
+                disabled={saving}
+              >
                 {saving ? "Đang lưu..." : "Lưu thay đổi"}
               </button>
             </div>
