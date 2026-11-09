@@ -463,6 +463,7 @@ export class InventoryService {
             variant: true,
           },
         },
+        createdBy: true,
         confirmedBy: true,
       },
       orderBy: {
@@ -470,4 +471,45 @@ export class InventoryService {
       },
     });
   }
+  async cancelDocument(documentId: string) {
+  return this.prisma.$transaction(
+    async (tx) => {
+      const document = await tx.inventoryDocument.findUnique({
+        where: { id: documentId },
+      });
+
+      if (!document) {
+        throw new NotFoundException("Không tìm thấy phiếu kho!");
+      }
+
+      if (document.status !== InventoryDocumentStatus.DRAFT) {
+        throw new BadRequestException(
+          "Chỉ có thể hủy phiếu kho đang ở trạng thái nháp!",
+        );
+      }
+
+      const cancelled = await tx.inventoryDocument.updateMany({
+        where: {
+          id: documentId,
+          status: InventoryDocumentStatus.DRAFT,
+        },
+        data: {
+          status: InventoryDocumentStatus.CANCELLED,
+        },
+      });
+
+      if (cancelled.count !== 1) {
+        throw new BadRequestException(
+          "Phiếu kho đã được xử lý, không thể hủy!",
+        );
+      }
+
+      return {
+        success: true,
+        message: "Đã hủy phiếu kho thành công.",
+      };
+    },
+    { isolationLevel: "Serializable" },
+  );
+}
 }

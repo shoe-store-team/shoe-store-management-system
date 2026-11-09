@@ -44,6 +44,7 @@ export function CartPage() {
 
   const khongThanhToanDuoc = gio.items.length === 0 || gio.items.some((i) => !i.available);
   const tongCuoi = giam ? giam.total : gio.subtotal;
+  const boMa = () => { setGiam(null); setLoiMa(''); setMa(''); };
 
   return (
     <div className="noi-dung">
@@ -61,7 +62,7 @@ export function CartPage() {
               <tr key={i.id} style={{ borderTop: '1px solid #ddd', textAlign: 'center' }}>
                 <td align="left">
                   {i.productName}
-                  {!i.available && <div style={{ color: '#b91c1c', fontSize: 12 }}>Hết hàng hoặc không đủ tồn kho (còn {i.stock})</div>}
+                  {!i.available && <div style={{ color: '#b91c1c', fontSize: 12 }}>{i.unavailableReason === 'INACTIVE' ? 'Sản phẩm đã ngừng bán, vui lòng xóa khỏi giỏ hàng' : `Không đủ tồn kho (còn ${i.stock})`}</div>}
                 </td>
                 <td>{i.size}</td>
                 <td>{i.color}</td>
@@ -82,13 +83,14 @@ export function CartPage() {
       <div style={{ marginTop: 24 }}>
         <input placeholder="Mã giảm giá" value={ma} onChange={(e) => setMa(e.target.value)} />{' '}
         <button disabled={!ma.trim() || gio.items.length === 0} onClick={() => kiemTraLai(ma)}>Áp dụng</button>
+        {giam && <>{' '}<button onClick={boMa}>Bỏ mã</button></>}
         {loiMa && <p style={{ color: '#b91c1c' }}>{loiMa}</p>}
       </div>
 
       <div style={{ marginTop: 16, textAlign: 'right' }}>
-        <p>Tạm tính: {dinhDangTien(gio.subtotal)}</p>
+        <p>Tạm tính (trước giảm giá): {dinhDangTien(gio.subtotal)}</p>
         {giam && <p style={{ color: '#15803d' }}>Mã {giam.code}: −{dinhDangTien(giam.discountAmount)}</p>}
-        <h3>Tổng cộng: {dinhDangTien(tongCuoi)}</h3>
+        <h3>Tổng dự kiến: {dinhDangTien(tongCuoi)}</h3>
         {/* Người 4 nối trang thanh toán ở đây (gửi kèm mã giảm giá đang áp dụng) */}
         <button disabled={khongThanhToanDuoc}>Tiến hành thanh toán</button>
       </div>

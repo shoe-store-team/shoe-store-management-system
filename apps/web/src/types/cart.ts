@@ -11,6 +11,7 @@ export type DongGioHang = {
   lineTotal: number;
   stock: number;
   available: boolean;
+  unavailableReason: 'INACTIVE' | 'INSUFFICIENT_STOCK' | null;
 };
 
 export type GioHang = {

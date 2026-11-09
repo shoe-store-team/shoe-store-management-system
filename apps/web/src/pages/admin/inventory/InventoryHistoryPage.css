@@ -1,0 +1,133 @@
+
+.inventory-history {
+  padding: 28px;
+  min-width: 0;
+  color: #172b45;
+}
+
+.inventory-history .inventory-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.inventory-history .inventory-heading h2 {
+  margin: 0 0 8px;
+  font-size: 25px;
+  color: #111827;
+}
+
+.inventory-history .inventory-heading p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.inventory-history .inventory-count {
+  padding: 9px 14px;
+  border-radius: 8px;
+  background: #fff0dc;
+  color: #b96900;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.inventory-history .inventory-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 22px;
+}
+
+.inventory-history .inventory-nav a {
+  padding: 9px 14px;
+  border-radius: 7px;
+  color: #526176;
+  text-decoration: none;
+  font-size: 13px;
+}
+
+.inventory-history .inventory-nav a:hover,
+.inventory-history .inventory-nav a.active {
+  background: #fff0dc;
+  color: #bd6b08;
+}
+
+.inventory-history .inventory-alert {
+  padding: 13px 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+
+.inventory-history .inventory-error {
+  background: #fff0f0;
+  color: #c33737;
+}
+
+.inventory-history .inventory-card {
+  overflow-x: auto;
+  border: 1px solid #e2e6ed;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(20, 39, 65, .04);
+}
+
+.inventory-history table {
+  width: 100%;
+  min-width: 950px;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 13px;
+}
+
+.inventory-history th {
+  padding: 15px 14px;
+  background: #f3f5f8;
+  color: #35445a;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.inventory-history td {
+  padding: 14px;
+  border-top: 1px solid #edf0f4;
+  color: #374151;
+  vertical-align: top;
+}
+
+.inventory-history tbody tr:hover {
+  background: #fafbfd;
+}
+
+.inventory-history .inventory-description {
+  margin: 5px 0 0;
+  color: #7b8798;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.inventory-history .inventory-item {
+  padding: 5px 0;
+  line-height: 1.5;
+}
+
+.inventory-history .inventory-empty {
+  padding: 32px;
+  text-align: center;
+  color: #9ca3af;
+}
+
+@media (max-width: 768px) {
+  .inventory-history {
+    padding: 16px;
+  }
+
+  .inventory-history .inventory-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

@@ -70,12 +70,12 @@ export async function registerUser(input: RegisterInput) {
         createdAt: true,
       },
     });
-  } catch (error) {
+   } catch (error) {
     if (
       error instanceof PrismaClientKnownRequestError &&
       error.code === "P2002"
     ) {
-      throw new Error("EMAIL_EXISTS");
+      throw new Error("EMAIL_EXISTS", { cause: error });
     }
 
     throw error;
@@ -125,7 +125,7 @@ export async function loginUser(input: LoginInput) {
       role: user.role,
     },
     jwtSecret,
-    { expiresIn: "1h" },
+    { expiresIn: "7d" },
   );
 
   return {
@@ -139,8 +139,7 @@ export async function loginUser(input: LoginInput) {
     },
   };
 }
-
-import { randomInt, randomUUID } from "crypto";
+import { randomInt } from "crypto";
 
 // OTP demo: chỉ lưu trong bộ nhớ
 const resetOtps = new Map<

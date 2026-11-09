@@ -1,12 +1,101 @@
+
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
-async function main() {
-  // Tạo tài khoản Admin nếu chưa tồn tại
-  const adminEmail = "admin@shoestore.com";
+// ======================================================
+// 1. SEED MÃ KHUYẾN MÃI
+// ======================================================
 
+async function seedPromotions() {
+  // Mã khuyến mãi có thời hạn một năm kể từ lần tạo đầu tiên.
+  const startsAt = new Date();
+  const endsAt = new Date();
+  endsAt.setFullYear(endsAt.getFullYear() + 1);
+
+  const danhSachKhuyenMai = [
+    {
+      code: "WELCOME10",
+      name: "Chào mừng khách hàng mới",
+      description: "Giảm 10% cho đơn hàng từ 500.000đ.",
+      discountType: "PERCENTAGE" as const,
+      discountValue: 10,
+      maxDiscount: 150000,
+      minOrderAmount: 500000,
+      usageLimit: 500,
+    },
+    {
+      code: "SALE15",
+      name: "Ưu đãi giảm 15%",
+      description: "Giảm 15%, tối đa 300.000đ.",
+      discountType: "PERCENTAGE" as const,
+      discountValue: 15,
+      maxDiscount: 300000,
+      minOrderAmount: 1000000,
+      usageLimit: 200,
+    },
+    {
+      code: "CHUATAYDAU",
+      name: "Giảm ngay 50.000đ",
+      description: "Giảm trực tiếp 50.000đ cho đơn hàng từ 300.000đ.",
+      discountType: "FIXED_AMOUNT" as const,
+      discountValue: 50000,
+      maxDiscount: null,
+      minOrderAmount: 300000,
+      usageLimit: 300,
+    },
+    {
+      code: "GIAM100K",
+      name: "Giảm ngay 100.000đ",
+      description: "Giảm trực tiếp 100.000đ cho đơn hàng từ 1.500.000đ.",
+      discountType: "FIXED_AMOUNT" as const,
+      discountValue: 100000,
+      maxDiscount: null,
+      minOrderAmount: 1500000,
+      usageLimit: 100,
+    },
+  ];
+
+  for (const km of danhSachKhuyenMai) {
+    await prisma.promotion.upsert({
+      where: {
+        code: km.code,
+      },
+
+      // Nếu mã đã tồn tại thì không ghi đè dữ liệu.
+      // Đặc biệt không đặt lại usageCount.
+      update: {},
+
+      create: {
+        code: km.code,
+        name: km.name,
+        description: km.description,
+        discountType: km.discountType,
+        discountValue: km.discountValue,
+        maxDiscount: km.maxDiscount,
+        minOrderAmount: km.minOrderAmount,
+        startsAt,
+        endsAt,
+        usageLimit: km.usageLimit,
+        usageCount: 0,
+        isActive: true,
+      },
+    });
+
+    console.log(`Đã kiểm tra mã khuyến mãi: ${km.code}`);
+  }
+
+  console.log(`Đã xử lý ${danhSachKhuyenMai.length} mã khuyến mãi.`);
+}
+
+// ======================================================
+// 2. SEED DỮ LIỆU CHÍNH
+// ======================================================
+
+async function main() {
+  // Tạo tài khoản Admin nếu chưa tồn tại.
+  const adminEmail = "admin@shoestore.com";
   const adminPassword = "Admin123";
 
   if (!adminPassword) {
@@ -44,9 +133,13 @@ async function main() {
 
   for (const ten of tenDanhMuc) {
     const danhMuc = await prisma.category.upsert({
-      where: { name: ten },
+      where: {
+        name: ten,
+      },
       update: {},
-      create: { name: ten },
+      create: {
+        name: ten,
+      },
     });
 
     danhMucTheoTen[ten] = danhMuc.id;
@@ -280,11 +373,18 @@ async function main() {
     console.log(`Đã xử lý sản phẩm: ${sp.productCode} - ${sp.name}`);
   }
 
+  // 5. Tạo các mã khuyến mãi.
+  await seedPromotions();
+
   console.log("----------------------------------");
   console.log(`Đã xử lý ${sanPhamMau.length} sản phẩm.`);
   console.log(`Đã xử lý ${tenDanhMuc.length} danh mục.`);
   console.log("Seed hoàn tất!");
 }
+
+// ======================================================
+// 3. CHẠY SEED
+// ======================================================
 
 main()
   .catch((error) => {

@@ -1,6 +1,5 @@
 
 import { useState, type FormEvent } from 'react';
-
 import type {
   SanPham,
   TaoSanPhamDto,
@@ -14,6 +13,11 @@ type DanhMuc = {
 };
 
 type BienTheDangNhap = {
+  id?: string;
+  sku?: string;
+  stock?: number;
+  isActive?: boolean;
+  laBienTheCu: boolean;
   size: string;
   color: string;
   priceOverride: string;
@@ -36,11 +40,18 @@ export function ProductForm({
   onCapNhat,
   onHuySua,
 }: ProductFormProps) {
-  const [tenGiay, setTenGiay] = useState(sanPhamDangSua?.name ?? '');
-  const [moTa, setMoTa] = useState(sanPhamDangSua?.description ?? '');
+  const [tenGiay, setTenGiay] = useState(
+    sanPhamDangSua?.name ?? ''
+  );
+
+  const [moTa, setMoTa] = useState(
+    sanPhamDangSua?.description ?? ''
+  );
 
   const [giaBan, setGiaBan] = useState(
-    sanPhamDangSua ? String(sanPhamDangSua.basePrice) : ''
+    sanPhamDangSua
+      ? String(sanPhamDangSua.basePrice)
+      : ''
   );
 
   const [imageUrl, setImageUrl] = useState(
@@ -56,21 +67,49 @@ export function ProductForm({
   );
 
   const [variants, setVariants] = useState<BienTheDangNhap[]>(
-    sanPhamDangSua
-      ? []
-      : [{ size: '40', color: 'Black', priceOverride: '' }]
+    () => {
+      if (sanPhamDangSua) {
+        return sanPhamDangSua.variants.map((variant) => ({
+          id: variant.id,
+          sku: variant.sku,
+          stock: variant.stock,
+          isActive: variant.isActive,
+          laBienTheCu: true,
+          size: String(variant.size),
+          color: variant.color,
+          priceOverride:
+            variant.priceOverride == null
+              ? ''
+              : String(variant.priceOverride),
+        }));
+      }
+
+      return [
+        {
+          laBienTheCu: false,
+          size: '40',
+          color: 'Black',
+          priceOverride: '',
+        },
+      ];
+    }
   );
 
   function themBienThe() {
     setVariants((current) => [
       ...current,
-      { size: '40', color: '', priceOverride: '' },
+      {
+        laBienTheCu: false,
+        size: '40',
+        color: '',
+        priceOverride: '',
+      },
     ]);
   }
 
   function capNhatBienThe(
     index: number,
-    field: keyof BienTheDangNhap,
+    field: 'size' | 'color' | 'priceOverride',
     value: string
   ) {
     setVariants((current) =>
@@ -97,8 +136,6 @@ export function ProductForm({
     }));
   }
 
-  // Chỉ thay đổi trạng thái trên form.
-  // Trạng thái sẽ được gửi lên API khi bấm Lưu thay đổi.
   function capNhatTrangThai() {
     setIsActive((current) => !current);
   }
@@ -108,18 +145,31 @@ export function ProductForm({
   ) {
     event.preventDefault();
 
+    const dangThemMoi = !sanPhamDangSua;
+    const coNhapGia = giaBan.trim() !== '';
     const basePrice = Number(giaBan);
 
-    if (
-      !tenGiay.trim() ||
-      giaBan.trim() === '' ||
-      !Number.isFinite(basePrice) ||
-      basePrice <= 0
-    ) {
-      alert('Vui lòng nhập tên sản phẩm và giá bán hợp lệ.');
+    // Khi thêm mới bắt buộc có giá.
+    // Khi sửa có thể để trống giá nếu không muốn đổi giá.
+    if (!tenGiay.trim()) {
+      alert('Vui lòng nhập tên sản phẩm.');
       return;
     }
 
+    if (dangThemMoi && !coNhapGia) {
+      alert('Vui lòng nhập giá bán.');
+      return;
+    }
+
+    if (
+      coNhapGia &&
+      (!Number.isFinite(basePrice) || basePrice <= 0)
+    ) {
+      alert('Giá bán phải lớn hơn 0.');
+      return;
+    }
+
+    // Kiểm tra size, màu sắc và giá riêng.
     for (const variant of variants) {
       const size = Number(variant.size);
 
@@ -142,10 +192,12 @@ export function ProductForm({
       }
     }
 
+    // Kiểm tra trùng size và màu.
     const bienTheGuiLen = chuyenThanhBienThe();
 
     const khoaBienThe = bienTheGuiLen.map(
-      (v) => `${v.size}-${v.color.toLowerCase()}`
+      (variant) =>
+        `${variant.size}-${variant.color.trim().toLowerCase()}`
     );
 
     if (new Set(khoaBienThe).size !== khoaBienThe.length) {
@@ -153,10 +205,10 @@ export function ProductForm({
       return;
     }
 
+    // Dữ liệu chung, không tự động gửi giá khi chỉnh sửa.
     const duLieuChung = {
       name: tenGiay.trim(),
       description: moTa.trim(),
-      basePrice,
       imageUrl: imageUrl.trim() || null,
       categoryId: categoryId || null,
     };
@@ -164,10 +216,9 @@ export function ProductForm({
     if (sanPhamDangSua) {
       const data: CapNhatSanPhamDto = {
         ...duLieuChung,
+        ...(coNhapGia ? { basePrice } : {}),
         isActive,
-        ...(bienTheGuiLen.length > 0
-          ? { variants: bienTheGuiLen }
-          : {}),
+        variants: bienTheGuiLen,
       };
 
       await onCapNhat(sanPhamDangSua.id, data);
@@ -181,6 +232,7 @@ export function ProductForm({
 
     await onThem({
       ...duLieuChung,
+      basePrice,
       variants: bienTheGuiLen,
     });
   }
@@ -201,7 +253,8 @@ export function ProductForm({
 
           {sanPhamDangSua && (
             <p className="sl-form-note">
-              Mã sản phẩm: <strong>{sanPhamDangSua.productCode}</strong>
+              Mã sản phẩm:{' '}
+              <strong>{sanPhamDangSua.productCode}</strong>
             </p>
           )}
         </div>
@@ -221,7 +274,6 @@ export function ProductForm({
       <div className="sl-form-grid">
         <label className="sl-field sl-full">
           Tên sản phẩm <span>*</span>
-
           <input
             value={tenGiay}
             onChange={(e) => setTenGiay(e.target.value)}
@@ -234,14 +286,12 @@ export function ProductForm({
 
         <label className="sl-field">
           Danh mục
-
           <select
             value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}
             disabled={dangXuLy}
           >
             <option value="">Chưa phân loại</option>
-
             {danhMucs.map((item) => (
               <option key={item.id} value={item.id}>
                 {item.name}
@@ -272,7 +322,9 @@ export function ProductForm({
                 disabled={dangXuLy}
                 onClick={capNhatTrangThai}
               >
-                {isActive ? 'Ngừng kinh doanh' : 'Mở kinh doanh lại'}
+                {isActive
+                  ? 'Ngừng kinh doanh'
+                  : 'Mở kinh doanh lại'}
               </button>
             </div>
 
@@ -283,23 +335,34 @@ export function ProductForm({
         )}
 
         <label className="sl-field">
-          Giá bán (VNĐ) <span>*</span>
+          Giá bán (VNĐ)
+          {!sanPhamDangSua && <span>*</span>}
 
           <input
             type="number"
             min="1"
-            step="1000"
+            step="any"
             value={giaBan}
             onChange={(e) => setGiaBan(e.target.value)}
-            placeholder="1.500.000"
-            required
+            placeholder={
+              sanPhamDangSua
+                ? 'Để trống nếu không đổi giá'
+                : '1.500.000'
+            }
+            required={!sanPhamDangSua}
             disabled={dangXuLy}
           />
+
+          {sanPhamDangSua && (
+            <small className="sl-form-note">
+              Giá hiện tại: {sanPhamDangSua.basePrice.toLocaleString('vi-VN')} VNĐ.
+              Để trống nếu muốn giữ nguyên giá.
+            </small>
+          )}
         </label>
 
         <label className="sl-field sl-full">
           URL hình ảnh
-
           <input
             type="url"
             value={imageUrl}
@@ -332,7 +395,6 @@ export function ProductForm({
 
         <label className="sl-field sl-full">
           Mô tả
-
           <textarea
             value={moTa}
             onChange={(e) => setMoTa(e.target.value)}
@@ -344,45 +406,15 @@ export function ProductForm({
 
         <div className="sl-form-divider sl-full">
           <strong>Biến thể sản phẩm</strong>
-          <small>Một sản phẩm có thể có nhiều size và màu sắc.</small>
+          <small>
+            Biến thể cũ chỉ sửa được giá riêng. Biến thể mới có thể
+            nhập size, màu và giá.
+          </small>
         </div>
-
-        {sanPhamDangSua && (
-          <div className="sl-full">
-            <strong>Biến thể hiện tại</strong>
-
-            {sanPhamDangSua.variants.length === 0 ? (
-              <p>Chưa có biến thể.</p>
-            ) : (
-              sanPhamDangSua.variants.map((variant) => (
-                <div
-                  key={variant.id}
-                  className="sl-form-note"
-                  style={{ marginTop: '8px' }}
-                >
-                  <strong>SKU: {variant.sku}</strong>
-                  {' · '}Size {variant.size}
-                  {' · '}Màu: {variant.color}
-                  {' · '}Tồn kho: {variant.stock}
-
-                  {variant.isActive === false
-                    ? ' · Ngừng kinh doanh'
-                    : ''}
-                </div>
-              ))
-            )}
-
-            <p className="sl-form-note">
-              Các biến thể hiện tại được giữ nguyên. Nếu muốn thêm
-              size hoặc màu mới, hãy thêm ở phần bên dưới.
-              Không thể xóa biến thể tại form này.
-            </p>
-          </div>
-        )}
 
         {variants.map((variant, index) => (
           <div
-            key={index}
+            key={variant.id ?? `new-${index}`}
             className="sl-full sl-variant-row"
             style={{
               display: 'grid',
@@ -394,7 +426,6 @@ export function ProductForm({
           >
             <label className="sl-field">
               Size EU <span>*</span>
-
               <input
                 type="number"
                 min="1"
@@ -404,13 +435,12 @@ export function ProductForm({
                   capNhatBienThe(index, 'size', e.target.value)
                 }
                 required
-                disabled={dangXuLy}
+                disabled={dangXuLy || variant.laBienTheCu}
               />
             </label>
 
             <label className="sl-field">
               Màu sắc <span>*</span>
-
               <input
                 value={variant.color}
                 onChange={(e) =>
@@ -418,13 +448,12 @@ export function ProductForm({
                 }
                 placeholder="Black, White..."
                 required
-                disabled={dangXuLy}
+                disabled={dangXuLy || variant.laBienTheCu}
               />
             </label>
 
             <label className="sl-field">
               Giá riêng (VNĐ)
-
               <input
                 type="number"
                 min="1"
@@ -438,14 +467,26 @@ export function ProductForm({
               />
             </label>
 
-            <button
-              className="sl-button sl-button-light"
-              type="button"
-              onClick={() => xoaBienThe(index)}
-              disabled={dangXuLy}
-            >
-              Xóa
-            </button>
+            {variant.laBienTheCu ? (
+              <div className="sl-form-note">
+                <strong>{variant.sku}</strong>
+                <small>
+                  Tồn kho: {variant.stock}
+                  {variant.isActive === false
+                    ? ' · Đã ẩn'
+                    : ' · Đang hoạt động'}
+                </small>
+              </div>
+            ) : (
+              <button
+                className="sl-button sl-button-light"
+                type="button"
+                onClick={() => xoaBienThe(index)}
+                disabled={dangXuLy}
+              >
+                Xóa
+              </button>
+            )}
           </div>
         ))}
 
@@ -461,13 +502,13 @@ export function ProductForm({
         </div>
 
         <div className="sl-form-note sl-full">
-          SKU của biến thể mới sẽ được hệ thống tự động tạo
-          sau khi lưu sản phẩm. Admin không cần nhập SKU.
+          SKU của biến thể mới sẽ được hệ thống tự động tạo sau khi
+          lưu sản phẩm.
         </div>
 
         <div className="sl-form-note sl-full">
-          Tồn kho của biến thể mới mặc định bằng 0.
-          Việc nhập và điều chỉnh tồn kho sẽ thực hiện trong phân hệ Kho.
+          Tồn kho biến thể mới mặc định bằng 0. Việc nhập và điều
+          chỉnh tồn kho thực hiện trong phân hệ Kho.
         </div>
       </div>
 

@@ -216,9 +216,13 @@ async function kiemTraDanhMuc(categoryId?: string | null) {
   }
 }
 
-// GET: Lấy toàn bộ sản phẩm cho trang quản trị.
+// GET: Lấy sản phẩm chưa bị xóa.
+// Bao gồm sản phẩm đang kinh doanh và ngừng kinh doanh.
 export async function layTatCaSanPham() {
   return prisma.product.findMany({
+    where: {
+      isDeleted: false
+    },
     include: {
       category: true,
       variants: true
@@ -226,10 +230,13 @@ export async function layTatCaSanPham() {
   });
 }
 
-// GET: Lấy chi tiết một sản phẩm.
+// GET: Lấy chi tiết sản phẩm chưa bị xóa.
 export async function laySanPhamTheoId(id: string) {
-  const sanPham = await prisma.product.findUnique({
-    where: { id },
+  const sanPham = await prisma.product.findFirst({
+    where: {
+      id,
+      isDeleted: false
+    },
     include: {
       category: true,
       variants: true
@@ -291,13 +298,9 @@ export async function taoSanPham(data: TaoSanPhamInput) {
   await kiemTraDanhMuc(data.categoryId);
 
   return thucHienTransaction(async (tx) => {
-    // 1. Tìm số thứ tự sản phẩm tiếp theo.
     const soThuTu = await laySoThuTuSanPhamTiepTheo(tx);
-
-    // 2. Tự sinh mã sản phẩm.
     const productCode = taoMaSanPham(soThuTu);
 
-    // 3. Tạo sản phẩm và tự sinh SKU cho từng biến thể.
     return tx.product.create({
       data: {
         productCode,
@@ -307,6 +310,7 @@ export async function taoSanPham(data: TaoSanPhamInput) {
         imageUrl: data.imageUrl ?? null,
         categoryId: data.categoryId ?? null,
         isActive: true,
+        isDeleted: false,
 
         variants: {
           create: data.variants.map((variant, index) => ({
@@ -314,8 +318,6 @@ export async function taoSanPham(data: TaoSanPhamInput) {
             size: variant.size,
             color: variant.color.trim(),
             priceOverride: variant.priceOverride ?? null,
-
-            // Tồn kho do Inventory quản lý.
             stock: 0,
             isActive: true
           }))
@@ -330,14 +332,16 @@ export async function taoSanPham(data: TaoSanPhamInput) {
 }
 
 // PUT: Cập nhật thông tin và thêm/cập nhật biến thể.
-
-// PUT: Cập nhật thông tin và thêm/cập nhật biến thể.
 export async function capNhatSanPham(
   id: string,
   data: CapNhatSanPhamInput
 ) {
-  const sanPhamHienTai = await prisma.product.findUnique({
-    where: { id }
+  // Không cho cập nhật sản phẩm đã xóa.
+  const sanPhamHienTai = await prisma.product.findFirst({
+    where: {
+      id,
+      isDeleted: false
+    }
   });
 
   if (!sanPhamHienTai) {
@@ -414,7 +418,6 @@ export async function capNhatSanPham(
     duLieuCapNhat.categoryId = data.categoryId;
   }
 
-  // Kiểm tra trạng thái kinh doanh.
   if (data.isActive !== undefined) {
     if (typeof data.isActive !== 'boolean') {
       throw new ProductServiceError(
@@ -430,18 +433,15 @@ export async function capNhatSanPham(
   }
 
   return thucHienTransaction(async (tx) => {
-    // Trạng thái biến thể sẽ đồng bộ với trạng thái sản phẩm.
-    // Nếu không gửi isActive thì giữ trạng thái hiện tại.
     const trangThaiKinhDoanh =
       data.isActive ?? sanPhamHienTai.isActive;
 
-    // 1. Cập nhật thông tin chính của sản phẩm.
     await tx.product.update({
       where: { id },
       data: duLieuCapNhat
     });
 
-    // 2. Đồng bộ trạng thái của các biến thể hiện tại.
+    // Đồng bộ trạng thái biến thể khi bật/tắt kinh doanh.
     if (data.isActive !== undefined) {
       await tx.productVariant.updateMany({
         where: { productId: id },
@@ -451,9 +451,7 @@ export async function capNhatSanPham(
       });
     }
 
-    // 3. Nếu có gửi variants, thêm mới hoặc cập nhật từng biến thể.
     if (data.variants !== undefined) {
-      // Lấy SKU lớn nhất hiện tại để cấp số tiếp theo.
       let soThuTuSku = await laySoThuTuSkuLonNhat(
         tx,
         id,
@@ -471,55 +469,48 @@ export async function capNhatSanPham(
           }
         };
 
-        // Kiểm tra biến thể đã tồn tại chưa.
         const bienTheHienTai =
           await tx.productVariant.findUnique({
             where: khoaBienThe
           });
 
-        // Chỉ cấp SKU mới nếu đây là biến thể mới.
-        let skuMoi: string | undefined;
-
-        if (!bienTheHienTai) {
+        if (bienTheHienTai) {
+          // Biến thể cũ: chỉ cập nhật giá riêng.
+          // Không thay đổi SKU, tồn kho hoặc trạng thái.
+          await tx.productVariant.update({
+            where: {
+              id: bienTheHienTai.id
+            },
+            data: {
+              ...(variant.priceOverride !== undefined
+                ? { priceOverride: variant.priceOverride }
+                : {})
+            }
+          });
+        } else {
+          // Biến thể mới: cấp SKU mới.
           soThuTuSku++;
 
-          skuMoi = taoSku(
+          const skuMoi = taoSku(
             sanPhamHienTai.productCode,
             soThuTuSku
           );
+
+          await tx.productVariant.create({
+            data: {
+              productId: id,
+              sku: skuMoi,
+              size: variant.size,
+              color,
+              priceOverride: variant.priceOverride ?? null,
+              stock: 0,
+              isActive: trangThaiKinhDoanh
+            }
+          });
         }
-
-        await tx.productVariant.upsert({
-          where: khoaBienThe,
-
-          create: {
-            productId: id,
-            sku: skuMoi!,
-            size: variant.size,
-            color,
-            priceOverride: variant.priceOverride ?? null,
-
-            // Tồn kho do Inventory quản lý.
-            stock: 0,
-
-            // Biến thể mới theo trạng thái sản phẩm.
-            isActive: trangThaiKinhDoanh
-          },
-
-          update: {
-            // Giữ nguyên SKU và stock của biến thể cũ.
-            ...(variant.priceOverride !== undefined
-              ? { priceOverride: variant.priceOverride }
-              : {}),
-
-            // Đồng bộ trạng thái với sản phẩm.
-            isActive: trangThaiKinhDoanh
-          }
-        });
       }
     }
 
-    // 4. Trả về sản phẩm sau khi cập nhật.
     return tx.product.findUniqueOrThrow({
       where: { id },
       include: {
@@ -530,29 +521,40 @@ export async function capNhatSanPham(
   });
 }
 
-
-// DELETE: Ngừng kinh doanh sản phẩm, không xóa vật lý.
+// DELETE: Xóa mềm sản phẩm, không xóa vật lý dữ liệu.
 export async function xoaSanPham(id: string) {
-  const sanPham = await prisma.product.findUnique({
-    where: { id }
-  });
-
-  if (!sanPham) {
-    throw new ProductServiceError(
-      'Không tìm thấy sản phẩm.',
-      404
-    );
-  }
-
   return prisma.$transaction(async (tx) => {
-    await tx.product.update({
-      where: { id },
-      data: { isActive: false }
+    const sanPham = await tx.product.findFirst({
+      where: {
+        id,
+        isDeleted: false
+      }
     });
 
+    if (!sanPham) {
+      throw new ProductServiceError(
+        'Không tìm thấy sản phẩm hoặc sản phẩm đã được xóa.',
+        404
+      );
+    }
+
+    // Đánh dấu sản phẩm đã xóa và ngừng kinh doanh.
+    await tx.product.update({
+      where: { id },
+      data: {
+        isActive: false,
+        isDeleted: true
+      }
+    });
+
+    // Ngừng tất cả biến thể của sản phẩm.
     await tx.productVariant.updateMany({
-      where: { productId: id },
-      data: { isActive: false }
+      where: {
+        productId: id
+      },
+      data: {
+        isActive: false
+      }
     });
 
     return tx.product.findUniqueOrThrow({

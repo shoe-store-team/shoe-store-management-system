@@ -1,6 +1,103 @@
+// import { Request, Response, NextFunction } from "express";
+// import jwt, { JwtPayload } from "jsonwebtoken";
 
+// const ROLES = [
+//   "CUSTOMER",
+//   "ADMIN",
+//   "WAREHOUSE_STAFF",
+//   "ORDER_STAFF",
+// ] as const;
+
+// export type UserRole = (typeof ROLES)[number];
+
+// export interface AuthUser {
+//   id: string;
+//   role: UserRole;
+// }
+
+// declare global {
+//   namespace Express {
+//     interface Request {
+//       authUser?: AuthUser;
+//     }
+//   }
+// }
+
+// export function authenticateToken(
+//   req: Request,
+//   res: Response,
+//   next: NextFunction
+// ) {
+//   const authHeader = req.headers.authorization;
+//   const token = authHeader?.startsWith("Bearer ")
+//     ? authHeader.slice(7)
+//     : null;
+
+//   if (!token) {
+//     res.status(401).json({
+//       message: "Vui lòng đăng nhập",
+//     });
+//     return;
+//   }
+
+//   const jwtSecret = process.env.JWT_SECRET;
+
+//   if (!jwtSecret) {
+//     console.error("JWT_SECRET chưa được cấu hình");
+//     res.status(500).json({
+//       message: "Lỗi cấu hình hệ thống",
+//     });
+//     return;
+//   }
+
+//   try {
+//     const decoded = jwt.verify(token, jwtSecret);
+
+//     if (
+//       typeof decoded === "string" ||
+//       typeof decoded.sub !== "string" ||
+//       !ROLES.includes(decoded.role as UserRole)
+//     ) {
+//       res.status(401).json({
+//         message: "Token không hợp lệ",
+//       });
+//       return;
+//     }
+
+//     req.authUser = {
+//       id: decoded.sub,
+//       role: decoded.role as UserRole,
+//     };
+
+//     next();
+//   } catch {
+//     res.status(401).json({
+//       message: "Token không hợp lệ hoặc đã hết hạn",
+//     });
+//   }
+// }
+
+// export function authorizeRoles(...allowedRoles: UserRole[]) {
+//   return (req: Request, res: Response, next: NextFunction) => {
+//     if (!req.authUser) {
+//       res.status(401).json({
+//         message: "Vui lòng đăng nhập",
+//       });
+//       return;
+//     }
+
+//     if (!allowedRoles.includes(req.authUser.role)) {
+//       res.status(403).json({
+//         message: "Bạn không có quyền truy cập",
+//       });
+//       return;
+//     }
+
+//     next();
+//   };
+// }
 import { Request, Response, NextFunction } from "express";
-import jwt, { JwtPayload } from "jsonwebtoken";
+import jwt from "jsonwebtoken";
 
 const ROLES = [
   "CUSTOMER",
@@ -16,6 +113,7 @@ export interface AuthUser {
   role: UserRole;
 }
 
+/* eslint-disable @typescript-eslint/no-namespace */
 declare global {
   namespace Express {
     interface Request {
@@ -23,6 +121,7 @@ declare global {
     }
   }
 }
+/* eslint-enable @typescript-eslint/no-namespace */
 
 export function authenticateToken(
   req: Request,
@@ -35,9 +134,7 @@ export function authenticateToken(
     : null;
 
   if (!token) {
-    res.status(401).json({
-      message: "Vui lòng đăng nhập",
-    });
+    res.status(401).json({ message: "Vui lòng đăng nhập" });
     return;
   }
 
@@ -45,9 +142,7 @@ export function authenticateToken(
 
   if (!jwtSecret) {
     console.error("JWT_SECRET chưa được cấu hình");
-    res.status(500).json({
-      message: "Lỗi cấu hình hệ thống",
-    });
+    res.status(500).json({ message: "Lỗi cấu hình hệ thống" });
     return;
   }
 
@@ -59,9 +154,7 @@ export function authenticateToken(
       typeof decoded.sub !== "string" ||
       !ROLES.includes(decoded.role as UserRole)
     ) {
-      res.status(401).json({
-        message: "Token không hợp lệ",
-      });
+      res.status(401).json({ message: "Token không hợp lệ" });
       return;
     }
 
@@ -81,16 +174,12 @@ export function authenticateToken(
 export function authorizeRoles(...allowedRoles: UserRole[]) {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.authUser) {
-      res.status(401).json({
-        message: "Vui lòng đăng nhập",
-      });
+      res.status(401).json({ message: "Vui lòng đăng nhập" });
       return;
     }
 
     if (!allowedRoles.includes(req.authUser.role)) {
-      res.status(403).json({
-        message: "Bạn không có quyền truy cập",
-      });
+      res.status(403).json({ message: "Bạn không có quyền truy cập" });
       return;
     }
 

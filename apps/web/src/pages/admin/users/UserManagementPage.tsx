@@ -1,5 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
-import type { FormEvent } from "react";
+﻿import { useCallback, useEffect, useMemo, useState } from "react";
 import "./UserManagementPage.css";
 
 interface User {
@@ -64,7 +63,38 @@ export function Page() {
     role: "CUSTOMER",
   });
 
-  // Tải danh sách người dùng
+  const API = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+
+  // Gửi yêu cầu đến API kèm JWT token.
+  const request = useCallback(
+    async (url: string, options: RequestInit = {}) => {
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        throw new Error("Vui lòng đăng nhập lại.");
+      }
+
+      const res = await fetch(`${API}${url}`, {
+        ...options,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+          ...options.headers,
+        },
+      });
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        throw new Error(result.message || "Yêu cầu thất bại");
+      }
+
+      return result;
+    },
+    [API],
+  );
+
+  // Tải danh sách người dùng khi mở trang.
   useEffect(() => {
     let cancelled = false;
 
@@ -94,9 +124,9 @@ export function Page() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [request]);
 
-  // Tìm kiếm và lọc người dùng
+  // Tìm kiếm và lọc người dùng.
   const filteredUsers = useMemo(() => {
     return users.filter((user) => {
       const text =
@@ -116,7 +146,7 @@ export function Page() {
     });
   }, [users, keyword, roleFilter, statusFilter]);
 
-  // Mở form chỉnh sửa
+  // Mở form chỉnh sửa người dùng.
   function openEdit(user: User) {
     setMessage("");
     setEditingUser(user);
@@ -129,8 +159,8 @@ export function Page() {
     });
   }
 
-  // Lưu thông tin người dùng
-  async function saveUser(e: FormEvent<HTMLFormElement>) {
+  // Lưu thông tin người dùng.
+  async function saveUser(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
     if (!editingUser || saving) return;
@@ -163,7 +193,7 @@ export function Page() {
     }
   }
 
-  // Khóa hoặc mở khóa tài khoản
+  // Khóa hoặc mở khóa tài khoản.
   async function toggleStatus(user: User) {
     const action = user.isActive ? "khóa" : "mở khóa";
 
@@ -186,9 +216,7 @@ export function Page() {
       });
 
       setUsers((prev) =>
-        prev.map((item) =>
-          item.id === user.id ? result.data : item,
-        ),
+        prev.map((u) => (u.id === user.id ? result.data : u)),
       );
 
       setMessage(`Đã ${action} tài khoản thành công.`);
@@ -209,9 +237,7 @@ export function Page() {
           <p>Quản lý tài khoản khách hàng và nhân viên kho</p>
         </div>
 
-        <div className="user-count">
-          {users.length} tài khoản
-        </div>
+        <div className="user-count">{users.length} tài khoản</div>
       </div>
 
       <div className="user-toolbar">
@@ -266,10 +292,12 @@ export function Page() {
                   <th>Thao tác</th>
                 </tr>
               </thead>
+
               <tbody>
                 {filteredUsers.map((user, index) => (
                   <tr key={user.id}>
                     <td>{index + 1}</td>
+
                     <td>
                       <div className="user-name-cell">
                         <div className="user-avatar">
@@ -410,11 +438,7 @@ export function Page() {
                 Hủy
               </button>
 
-              <button
-                type="submit"
-                className="btn-edit"
-                disabled={saving}
-              >
+              <button type="submit" className="btn-edit" disabled={saving}>
                 {saving ? "Đang lưu..." : "Lưu thay đổi"}
               </button>
             </div>

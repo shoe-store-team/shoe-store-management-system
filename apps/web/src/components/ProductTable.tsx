@@ -1,4 +1,3 @@
-
 import type { SanPham } from '../types/product';
 
 type ProductTableProps = {
@@ -154,8 +153,8 @@ export function ProductTable({
                   >
                     <i />
                     {sanPham.isActive === false
-  ? 'Ngừng kinh doanh'
-  : 'Đang kinh doanh'}
+                      ? 'Ngừng kinh doanh'
+                      : 'Đang kinh doanh'}
                   </span>
                 </td>
 

@@ -57,7 +57,7 @@ export function ProductDetailPage() {
       <p><strong>Màu</strong></p>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         {cacMau.map((m) => (
-          <button key={m} onClick={() => { setMau(m); setSize(null); }}
+          <button key={m} onClick={() => { setMau(m); setSize(null); setSoLuong(1); }}
             style={{ fontWeight: m === mau ? 700 : 400 }}>{m}</button>
         ))}
       </div>
@@ -65,7 +65,7 @@ export function ProductDetailPage() {
       <p><strong>Size</strong></p>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         {cacSize.map((v) => (
-          <button key={v.id} disabled={v.stock === 0} onClick={() => setSize(v.size)}
+          <button key={v.id} disabled={v.stock === 0} onClick={() => { setSize(v.size); setSoLuong((q) => Math.min(q, v.stock)); }}
             style={{ fontWeight: v.size === size ? 700 : 400 }}>{v.size}</button>
         ))}
       </div>
@@ -74,7 +74,7 @@ export function ProductDetailPage() {
       <p>
         Số lượng:{' '}
         <input type="number" min={1} max={bienThe?.stock ?? 1} value={soLuong}
-          onChange={(e) => setSoLuong(Math.max(1, Number(e.target.value) || 1))} style={{ width: 70 }} />
+          onChange={(e) => setSoLuong(Math.min(bienThe?.stock ?? 1, Math.max(1, Number(e.target.value) || 1)))} style={{ width: 70 }} />
       </p>
       <button disabled={!bienThe || hetHang} onClick={themVaoGio}>Thêm vào giỏ</button>
       {thongBao && <p style={{ color: '#15803d' }}>{thongBao} — <Link to="/cart">Xem giỏ hàng</Link></p>}
