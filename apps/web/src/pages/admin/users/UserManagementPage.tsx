@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import "./UserManagementPage.css";
 
 interface User {
@@ -17,6 +17,8 @@ interface EditForm {
   role: string;
 }
 
+const API = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+
 export function Page() {
   const [users, setUsers] = useState<User[]>([]);
   const [keyword, setKeyword] = useState("");
@@ -34,8 +36,6 @@ export function Page() {
     phone: "",
     role: "CUSTOMER",
   });
-
-  const API = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 
   // Gửi yêu cầu đến API kèm JWT token.
   const request = useCallback(
@@ -63,7 +63,7 @@ export function Page() {
 
       return result;
     },
-    [API],
+    [],
   );
 
   // Tải danh sách người dùng khi mở trang.
@@ -76,6 +76,7 @@ export function Page() {
 
         if (!cancelled) {
           setUsers(result.data ?? []);
+          setError("");
         }
       } catch (err) {
         if (!cancelled) {
@@ -100,10 +101,13 @@ export function Page() {
   // Tìm kiếm và lọc người dùng.
   const filteredUsers = useMemo(() => {
     return users.filter((user) => {
-      const text = `${user.name} ${user.email} ${user.phone}`.toLowerCase();
+      const text =
+        `${user.name} ${user.email} ${user.phone}`.toLowerCase();
 
       const matchKeyword = text.includes(keyword.toLowerCase());
-      const matchRole = roleFilter === "ALL" || user.role === roleFilter;
+
+      const matchRole =
+        roleFilter === "ALL" || user.role === roleFilter;
 
       const matchStatus =
         statusFilter === "ALL" ||
@@ -143,13 +147,17 @@ export function Page() {
       });
 
       setUsers((prev) =>
-        prev.map((u) => (u.id === editingUser.id ? result.data : u)),
+        prev.map((user) =>
+          user.id === editingUser.id ? result.data : user,
+        ),
       );
 
       setEditingUser(null);
       setMessage("Cập nhật tài khoản thành công.");
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Không thể cập nhật");
+      setMessage(
+        err instanceof Error ? err.message : "Không thể cập nhật",
+      );
     } finally {
       setSaving(false);
     }
@@ -159,7 +167,11 @@ export function Page() {
   async function toggleStatus(user: User) {
     const action = user.isActive ? "khóa" : "mở khóa";
 
-    if (!window.confirm(`Bạn có chắc muốn ${action} ${user.email}?`)) {
+    if (
+      !window.confirm(
+        `Bạn có chắc muốn ${action} ${user.email}?`,
+      )
+    ) {
       return;
     }
 
@@ -168,7 +180,9 @@ export function Page() {
     try {
       const result = await request(`/users/${user.id}/status`, {
         method: "PATCH",
-        body: JSON.stringify({ isActive: !user.isActive }),
+        body: JSON.stringify({
+          isActive: !user.isActive,
+        }),
       });
 
       setUsers((prev) =>
@@ -178,7 +192,9 @@ export function Page() {
       setMessage(`Đã ${action} tài khoản thành công.`);
     } catch (err) {
       setMessage(
-        err instanceof Error ? err.message : "Không thể cập nhật trạng thái",
+        err instanceof Error
+          ? err.message
+          : "Không thể cập nhật trạng thái",
       );
     }
   }
@@ -222,7 +238,11 @@ export function Page() {
       </div>
 
       {message && <p role="status">{message}</p>}
-      {loading && <p className="user-message">Đang tải dữ liệu...</p>}
+
+      {loading && (
+        <p className="user-message">Đang tải dữ liệu...</p>
+      )}
+
       {error && <p className="user-error">{error}</p>}
 
       {!loading && !error && (
@@ -251,11 +271,13 @@ export function Page() {
                         <div className="user-avatar">
                           {user.name?.charAt(0).toUpperCase() || "U"}
                         </div>
+
                         <span>{user.name}</span>
                       </div>
                     </td>
 
                     <td>{user.email}</td>
+
                     <td>{user.phone || "—"}</td>
 
                     <td>
@@ -271,16 +293,21 @@ export function Page() {
                     <td>
                       <span
                         className={`status-badge ${
-                          user.isActive ? "status-active" : "status-locked"
+                          user.isActive
+                            ? "status-active"
+                            : "status-locked"
                         }`}
                       >
-                        {user.isActive ? "● Hoạt động" : "● Đã khóa"}
+                        {user.isActive
+                          ? "● Hoạt động"
+                          : "● Đã khóa"}
                       </span>
                     </td>
 
                     <td>
                       <div className="user-actions">
                         <button
+                          type="button"
                           className="btn-edit"
                           onClick={() => openEdit(user)}
                         >
@@ -288,6 +315,7 @@ export function Page() {
                         </button>
 
                         <button
+                          type="button"
                           className="btn-lock"
                           onClick={() => void toggleStatus(user)}
                         >
