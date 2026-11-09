@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import "./UserManagementPage.css";
 
 interface User {
@@ -19,32 +19,6 @@ interface EditForm {
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 
-// Hàm gọi API
-async function request(url: string, options: RequestInit = {}) {
-  const token = localStorage.getItem("token");
-
-  if (!token) {
-    throw new Error("Vui lòng đăng nhập lại.");
-  }
-
-  const res = await fetch(`${API}${url}`, {
-    ...options,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-  });
-
-  const result = await res.json();
-
-  if (!res.ok) {
-    throw new Error(result.message || "Yêu cầu thất bại");
-  }
-
-  return result;
-}
-
 export function Page() {
   const [users, setUsers] = useState<User[]>([]);
   const [keyword, setKeyword] = useState("");
@@ -62,8 +36,6 @@ export function Page() {
     phone: "",
     role: "CUSTOMER",
   });
-
-  const API = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 
   // Gửi yêu cầu đến API kèm JWT token.
   const request = useCallback(
@@ -91,7 +63,7 @@ export function Page() {
 
       return result;
     },
-    [API],
+    [],
   );
 
   // Tải danh sách người dùng khi mở trang.
@@ -184,9 +156,7 @@ export function Page() {
       setMessage("Cập nhật tài khoản thành công.");
     } catch (err) {
       setMessage(
-        err instanceof Error
-          ? err.message
-          : "Không thể cập nhật",
+        err instanceof Error ? err.message : "Không thể cập nhật",
       );
     } finally {
       setSaving(false);
@@ -254,9 +224,7 @@ export function Page() {
         >
           <option value="ALL">Tất cả vai trò</option>
           <option value="CUSTOMER">Khách hàng</option>
-          <option value="WAREHOUSE_STAFF">
-            Nhân viên kho
-          </option>
+          <option value="WAREHOUSE_STAFF">Nhân viên kho</option>
         </select>
 
         <select
@@ -423,9 +391,7 @@ export function Page() {
                 }
               >
                 <option value="CUSTOMER">Khách hàng</option>
-                <option value="WAREHOUSE_STAFF">
-                  Nhân viên kho
-                </option>
+                <option value="WAREHOUSE_STAFF">Nhân viên kho</option>
               </select>
             </label>
 
