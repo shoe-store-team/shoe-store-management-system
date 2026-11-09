@@ -161,13 +161,13 @@ export function StockImportPage() {
       setSaving(false);
     }
   }
+
   async function cancelDraft() {
     if (!draft) return;
 
     const confirmed = window.confirm(
       `Bạn có chắc muốn hủy phiếu nhập ${draft.code}?`,
     );
-
     if (!confirmed) return;
 
     setSaving(true);
@@ -193,23 +193,64 @@ export function StockImportPage() {
       setSaving(false);
     }
   }
+
+  const totalSystemStock = variants.reduce((sum, v) => sum + v.stock, 0);
+  const totalImportQty = lines.reduce((sum, l) => sum + (l.quantity || 0), 0);
+  const totalImportCost = lines.reduce(
+    (sum, l) => sum + (l.quantity || 0) * (l.unitCost ?? 0),
+    0,
+  );
+
   return (
     <section className="stock-import">
-      <header className="inventory-heading">
+      <header className="inv-page-header">
         <div>
+          <p className="inv-eyebrow">INVENTORY MANAGEMENT · STOCK IN</p>
           <h2>Nhập kho</h2>
-          <p>Tạo phiếu nhập và xác nhận để cộng số lượng vào tồn kho.</p>
+          <p>Tạo phiếu nhập và xác nhận để cộng số lượng vào tồn kho theo từng size/màu.</p>
         </div>
+        <span className={`inv-header-badge ${draft ? "is-draft" : ""}`}>
+          {draft ? `● Phiếu nháp: ${draft.code}` : "Sẵn sàng lập phiếu nhập"}
+        </span>
       </header>
+
       <nav className="inventory-nav" aria-label="Điều hướng kho">
-        <Link to="/admin/inventory/check">Kiểm kê</Link>
-        <Link to="/admin/inventory/history">Lịch sử</Link>
-        <Link to="/admin/inventory/adjustment">Điều chỉnh</Link>
-        <Link to="/admin/inventory/export">Xuất kho</Link>
+        <Link to="/admin/inventory/check">◈ Kiểm kê</Link>
         <Link className="active" to="/admin/inventory/import">
-          Nhập kho
+          ＋ Nhập kho
         </Link>
+        <Link to="/admin/inventory/export">－ Xuất kho</Link>
+        <Link to="/admin/inventory/adjustment">⇄ Điều chỉnh</Link>
+        <Link to="/admin/inventory/history">☰ Lịch sử</Link>
       </nav>
+
+      <div className="inv-stat-grid">
+        <article className="inv-stat-card">
+          <span className="inv-stat-icon">◈</span>
+          <small>TỔNG BIẾN THỂ</small>
+          <strong>{variants.length}</strong>
+          <em>Đang kinh doanh</em>
+        </article>
+        <article className="inv-stat-card">
+          <span className="inv-stat-icon sage">▦</span>
+          <small>TỒN KHO HIỆN TẠI</small>
+          <strong>{totalSystemStock.toLocaleString("vi-VN")}</strong>
+          <em>Trước khi nhập</em>
+        </article>
+        <article className="inv-stat-card">
+          <span className="inv-stat-icon sand">＋</span>
+          <small>TỔNG SỐ LƯỢNG NHẬP</small>
+          <strong>+{totalImportQty.toLocaleString("vi-VN")}</strong>
+          <em>{lines.length} dòng biến thể</em>
+        </article>
+        <article className="inv-stat-card">
+          <span className="inv-stat-icon rose">₫</span>
+          <small>TỔNG GIÁ TRỊ NHẬP</small>
+          <strong>{totalImportCost.toLocaleString("vi-VN")} đ</strong>
+          <em>Tạm tính theo đơn giá</em>
+        </article>
+      </div>
+
       {error && (
         <p className="inventory-alert inventory-error" role="alert">
           {error}
@@ -220,31 +261,36 @@ export function StockImportPage() {
           {message}
         </p>
       )}
+
       {loading ? (
-        <p>Đang tải dữ liệu kho...</p>
+        <div className="inventory-card">
+          <p className="inventory-empty">Đang tải dữ liệu kho...</p>
+        </div>
       ) : (
-        <form className="inventory-card import-form" onSubmit={submit}>
-          <label>
-            Người lập / xác nhận
-            <select
-              value={operatorId}
-              onChange={(event) => setOperatorId(event.target.value)}
-              required
-            >
-              <option value="">Chọn nhân viên</option>
-              {operators.map((operator) => (
-                <option key={operator.id} value={operator.id}>
-                  {operator.name || operator.email} ({operator.role})
-                </option>
-              ))}
-            </select>
-          </label>
-          {operators.length === 0 && (
-            <p className="inventory-alert inventory-error">
-              Chưa có tài khoản ADMIN hoặc WAREHOUSE_STAFF đang hoạt động.
-            </p>
-          )}
+        <form className="inventory-card" onSubmit={submit}>
+          <div className="inv-section-title">
+            <div>
+              <h3>Thông tin phiếu nhập kho</h3>
+              <p>Nhập từ nhà cung cấp hoặc bổ sung hàng về kho trung tâm.</p>
+            </div>
+          </div>
+
           <div className="import-fields">
+            <label>
+              Người lập / xác nhận
+              <select
+                value={operatorId}
+                onChange={(event) => setOperatorId(event.target.value)}
+                required
+              >
+                <option value="">Chọn nhân viên</option>
+                {operators.map((operator) => (
+                  <option key={operator.id} value={operator.id}>
+                    {operator.name || operator.email} ({operator.role})
+                  </option>
+                ))}
+              </select>
+            </label>
             <label>
               Lý do nhập
               <input
@@ -259,12 +305,20 @@ export function StockImportPage() {
               <input
                 value={note}
                 onChange={(event) => setNote(event.target.value)}
+                placeholder="Số hóa đơn, lô hàng..."
                 disabled={Boolean(draft)}
               />
             </label>
           </div>
-          <div className="import-add-row">
-            <label style={{ flex: 1 }}>
+
+          {operators.length === 0 && (
+            <p className="inventory-alert inventory-error">
+              Chưa có tài khoản ADMIN hoặc WAREHOUSE_STAFF đang hoạt động.
+            </p>
+          )}
+
+          <div className="inv-picker-box">
+            <label>
               Biến thể
               <select
                 value={selectedVariantId}
@@ -273,7 +327,7 @@ export function StockImportPage() {
               >
                 {variants.map((variant) => (
                   <option key={variant.id} value={variant.id}>
-                    {variantLabel(variant)}
+                    {variantLabel(variant)} — tồn {variant.stock}
                   </option>
                 ))}
               </select>
@@ -284,16 +338,18 @@ export function StockImportPage() {
               onClick={addLine}
               disabled={!variants.length || Boolean(draft)}
             >
-              Thêm sản phẩm
+              ＋ Thêm sản phẩm
             </button>
           </div>
-          <div className="	inventory-table">
+
+          <div className="inventory-table">
             <table>
               <thead>
                 <tr>
                   <th>Sản phẩm</th>
                   <th>Tồn hiện tại</th>
                   <th>Số lượng nhập</th>
+                  <th>Tồn sau nhập</th>
                   <th>Đơn giá (đ)</th>
                   <th></th>
                 </tr>
@@ -306,8 +362,18 @@ export function StockImportPage() {
                   if (!variant) return null;
                   return (
                     <tr key={line.variantId}>
-                      <td>{variantLabel(variant)}</td>
-                      <td>{variant.stock}</td>
+                      <td>
+                        <div className="inv-variant-cell">
+                          <strong>{variant.product.name}</strong>
+                          <span className="inv-variant-meta">
+                            <span className="inv-chip">Size {variant.size}</span>
+                            <span className="inv-chip">{variant.color}</span>
+                          </span>
+                        </div>
+                      </td>
+                      <td>
+                        <span className="inv-stock-pill">{variant.stock}</span>
+                      </td>
                       <td>
                         <input
                           aria-label="Số lượng nhập"
@@ -324,11 +390,17 @@ export function StockImportPage() {
                         />
                       </td>
                       <td>
+                        <span className="inv-stock-pill positive">
+                          {variant.stock + line.quantity} (+{line.quantity})
+                        </span>
+                      </td>
+                      <td>
                         <input
                           aria-label="Đơn giá nhập"
                           type="number"
                           min="0"
                           step="1000"
+                          placeholder="0"
                           value={line.unitCost ?? ""}
                           onChange={(event) =>
                             updateLine(line.variantId, {
@@ -361,42 +433,49 @@ export function StockImportPage() {
                 })}
                 {lines.length === 0 && (
                   <tr>
-                    <td className="inventory-empty" colSpan={5}>
-                      Chưa có sản phẩm trong phiếu.
+                    <td className="inventory-empty" colSpan={6}>
+                      Chưa có sản phẩm trong phiếu. Hãy chọn biến thể phía trên và bấm "Thêm sản phẩm".
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
-          <button
-            type="submit"
-            disabled={saving || !operatorId || !lines.length}
-          >
-            {saving
-              ? "Đang xử lý..."
-              : draft
-                ? `Xác nhận phiếu ${draft.code}`
-                : "Tạo phiếu nháp"}
-          </button>
-          {draft && (
-            <>
-              <p>
-                Phiếu nháp được lưu. Bạn có thể sửa các số lượng rồi xác nhận.
-              </p>
 
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={cancelDraft}
-                disabled={saving}
-              >
-                Hủy phiếu nhập
-              </button>
-            </>
-          )}
+          <div className="inv-footer-bar">
+            <button
+              type="submit"
+              disabled={saving || !operatorId || !lines.length}
+            >
+              {saving
+                ? "Đang xử lý..."
+                : draft
+                  ? `✓ Xác nhận phiếu ${draft.code}`
+                  : "Tạo phiếu nháp"}
+            </button>
+
+            {draft && (
+              <div className="draft-actions">
+                <p>
+                  Phiếu nháp được lưu. Bạn có thể sửa các số lượng rồi xác nhận.
+                </p>
+                <button
+                  type="button"
+                  className="btn-danger-outline"
+                  onClick={cancelDraft}
+                  disabled={saving}
+                >
+                  Hủy phiếu nhập
+                </button>
+              </div>
+            )}
+          </div>
         </form>
       )}
+
+      <p className="inv-footnote">
+        Shoe Store Admin · Phiếu nhập kho sau khi xác nhận sẽ ghi vào Lịch sử kho.
+      </p>
     </section>
   );
 }
