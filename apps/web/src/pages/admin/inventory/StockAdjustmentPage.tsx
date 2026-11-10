@@ -132,13 +132,13 @@ export function StockAdjustmentPage() {
       setSaving(false);
     }
   }
+
   async function cancelDraft() {
     if (!draft) return;
 
     const confirmed = window.confirm(
       `Bạn có chắc muốn hủy phiếu điều chỉnh ${draft.code}?`,
     );
-
     if (!confirmed) return;
 
     setSaving(true);
@@ -166,23 +166,63 @@ export function StockAdjustmentPage() {
       setSaving(false);
     }
   }
+
+  const totalSystemStock = variants.reduce((sum, v) => sum + v.stock, 0);
+  const netDelta = lines.reduce((sum, line) => {
+    const v = variants.find((entry) => entry.id === line.variantId);
+    return sum + (v ? line.quantity - v.stock : 0);
+  }, 0);
+
   return (
     <section className="stock-adjustment">
-      <header className="inventory-heading">
+      <header className="inv-page-header">
         <div>
+          <p className="inv-eyebrow">INVENTORY MANAGEMENT · ADJUSTMENT</p>
           <h2>Điều chỉnh tồn kho</h2>
-          <p>Điều chỉnh tồn hiện tại về số lượng mới và lưu lại chứng từ.</p>
+          <p>Điều chỉnh tồn hiện tại về số lượng mới và lưu lại chứng từ đối soát.</p>
         </div>
+        <span className={`inv-header-badge ${draft ? "is-draft" : ""}`}>
+          {draft ? `● Phiếu nháp: ${draft.code}` : "Cập nhật trực tiếp theo biến thể"}
+        </span>
       </header>
+
       <nav className="inventory-nav" aria-label="Điều hướng kho">
-        <Link to="/admin/inventory/check">Kiểm kê</Link>
-        <Link to="/admin/inventory/history">Lịch sử</Link>
+        <Link to="/admin/inventory/check">◈ Kiểm kê</Link>
+        <Link to="/admin/inventory/import">＋ Nhập kho</Link>
+        <Link to="/admin/inventory/export">－ Xuất kho</Link>
         <Link to="/admin/inventory/adjustment" className="active">
-          Điều chỉnh
+          ⇄ Điều chỉnh
         </Link>
-        <Link to="/admin/inventory/export">Xuất kho</Link>
-        <Link to="/admin/inventory/import">Nhập kho</Link>
+        <Link to="/admin/inventory/history">☰ Lịch sử</Link>
       </nav>
+
+      <div className="inv-stat-grid">
+        <article className="inv-stat-card">
+          <span className="inv-stat-icon">◈</span>
+          <small>TỔNG BIẾN THỂ</small>
+          <strong>{variants.length}</strong>
+          <em>Trong hệ thống</em>
+        </article>
+        <article className="inv-stat-card">
+          <span className="inv-stat-icon sage">▦</span>
+          <small>TỔN KHO HIỆN TẠI</small>
+          <strong>{totalSystemStock.toLocaleString("vi-VN")}</strong>
+          <em>Tất cả size/màu</em>
+        </article>
+        <article className="inv-stat-card">
+          <span className="inv-stat-icon sand">⇄</span>
+          <small>DÒNG ĐIỀU CHỈNH</small>
+          <strong>{lines.length}</strong>
+          <em>Đang chọn trong phiếu</em>
+        </article>
+        <article className="inv-stat-card">
+          <span className="inv-stat-icon rose">±</span>
+          <small>BIẾN ĐỘNG DỰ KIẾN</small>
+          <strong>{netDelta > 0 ? `+${netDelta}` : netDelta}</strong>
+          <em>Chênh lệch tổng</em>
+        </article>
+      </div>
+
       {error && (
         <p className="inventory-alert inventory-error" role="alert">
           {error}
@@ -193,31 +233,36 @@ export function StockAdjustmentPage() {
           {message}
         </p>
       )}
+
       {loading ? (
-        <p>Đang tải dữ liệu kho...</p>
+        <div className="inventory-card">
+          <p className="inventory-empty">Đang tải dữ liệu kho...</p>
+        </div>
       ) : (
         <form className="inventory-card" onSubmit={submit}>
-          <label>
-            Người lập / xác nhận
-            <select
-              value={operatorId}
-              onChange={(event) => setOperatorId(event.target.value)}
-              required
-            >
-              <option value="">Chọn nhân viên</option>
-              {operators.map((operator) => (
-                <option key={operator.id} value={operator.id}>
-                  {operator.name || operator.email} ({operator.role})
-                </option>
-              ))}
-            </select>
-          </label>
-          {operators.length === 0 && (
-            <p className="thong-bao-loi">
-              Chưa có tài khoản ADMIN hoặc WAREHOUSE_STAFF đang hoạt động.
-            </p>
-          )}
-          <div className="hang-form">
+          <div className="inv-section-title">
+            <div>
+              <h3>Thông tin phiếu điều chỉnh</h3>
+              <p>Ghi rõ nguyên nhân điều chỉnh (hàng hư hỏng, thất thoát, cân bằng kho...).</p>
+            </div>
+          </div>
+
+          <div className="adjustment-form">
+            <label>
+              Người lập / xác nhận
+              <select
+                value={operatorId}
+                onChange={(event) => setOperatorId(event.target.value)}
+                required
+              >
+                <option value="">Chọn nhân viên</option>
+                {operators.map((operator) => (
+                  <option key={operator.id} value={operator.id}>
+                    {operator.name || operator.email} ({operator.role})
+                  </option>
+                ))}
+              </select>
+            </label>
             <label>
               Lý do điều chỉnh
               <input
@@ -232,19 +277,20 @@ export function StockAdjustmentPage() {
               <input
                 value={note}
                 onChange={(event) => setNote(event.target.value)}
+                placeholder="Biên bản kèm theo..."
                 disabled={Boolean(draft)}
               />
             </label>
           </div>
-          <div
-            style={{
-              display: "flex",
-              gap: 10,
-              alignItems: "end",
-              margin: "16px 0",
-            }}
-          >
-            <label style={{ flex: 1 }}>
+
+          {operators.length === 0 && (
+            <p className="thong-bao-loi">
+              Chưa có tài khoản ADMIN hoặc WAREHOUSE_STAFF đang hoạt động.
+            </p>
+          )}
+
+          <div className="inv-picker-box">
+            <label>
               Biến thể
               <select
                 value={selectedVariantId}
@@ -263,9 +309,10 @@ export function StockAdjustmentPage() {
               onClick={addLine}
               disabled={!variants.length || Boolean(draft)}
             >
-              Thêm sản phẩm
+              ＋ Thêm sản phẩm
             </button>
           </div>
+
           <div className="bang-bao">
             <table>
               <thead>
@@ -283,10 +330,21 @@ export function StockAdjustmentPage() {
                     (entry) => entry.id === line.variantId,
                   );
                   if (!variant) return null;
+                  const diff = line.quantity - variant.stock;
                   return (
                     <tr key={line.variantId}>
-                      <td>{variantLabel(variant)}</td>
-                      <td>{variant.stock}</td>
+                      <td>
+                        <div className="inv-variant-cell">
+                          <strong>{variant.product.name}</strong>
+                          <span className="inv-variant-meta">
+                            <span className="inv-chip">Size {variant.size}</span>
+                            <span className="inv-chip">{variant.color}</span>
+                          </span>
+                        </div>
+                      </td>
+                      <td>
+                        <span className="inv-stock-pill">{variant.stock}</span>
+                      </td>
                       <td>
                         <input
                           aria-label="Tồn kho mới"
@@ -309,10 +367,23 @@ export function StockAdjustmentPage() {
                           required
                         />
                       </td>
-                      <td>{line.quantity - variant.stock}</td>
+                      <td>
+                        <span
+                          className={`inv-stock-pill ${
+                            diff > 0
+                              ? "positive"
+                              : diff < 0
+                                ? "negative"
+                                : "neutral"
+                          }`}
+                        >
+                          {diff > 0 ? `+${diff}` : diff}
+                        </span>
+                      </td>
                       <td>
                         <button
                           type="button"
+                          className="btn-secondary"
                           disabled={Boolean(draft)}
                           onClick={() =>
                             setLines((current) =>
@@ -331,41 +402,48 @@ export function StockAdjustmentPage() {
                 {lines.length === 0 && (
                   <tr>
                     <td className="khong-co-du-lieu" colSpan={5}>
-                      Chưa có sản phẩm trong phiếu.
+                      Chưa có sản phẩm trong phiếu. Hãy chọn biến thể phía trên và bấm "Thêm sản phẩm".
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
-          <button
-            type="submit"
-            disabled={saving || !operatorId || !lines.length}
-          >
-            {saving
-              ? "Đang xử lý..."
-              : draft
-                ? `Xác nhận phiếu ${draft.code}`
-                : "Tạo phiếu nháp"}
-          </button>
-          {draft && (
-            <div className="draft-actions">
-              <p>
-                Phiếu nháp được lưu. Bạn có thể sửa tồn kho mới rồi xác nhận.
-              </p>
 
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={cancelDraft}
-                disabled={saving}
-              >
-                {saving ? "Đang hủy..." : "Hủy phiếu điều chỉnh"}
-              </button>
-            </div>
-          )}
+          <div className="inv-footer-bar">
+            <button
+              type="submit"
+              disabled={saving || !operatorId || !lines.length}
+            >
+              {saving
+                ? "Đang xử lý..."
+                : draft
+                  ? `✓ Xác nhận phiếu ${draft.code}`
+                  : "Tạo phiếu nháp"}
+            </button>
+
+            {draft && (
+              <div className="draft-actions">
+                <p>
+                  Phiếu nháp được lưu. Bạn có thể sửa tồn kho mới rồi xác nhận.
+                </p>
+                <button
+                  type="button"
+                  className="btn-danger-outline"
+                  onClick={cancelDraft}
+                  disabled={saving}
+                >
+                  {saving ? "Đang hủy..." : "Hủy phiếu điều chỉnh"}
+                </button>
+              </div>
+            )}
+          </div>
         </form>
       )}
+
+      <p className="inv-footnote">
+        Shoe Store Admin · Mọi điều chỉnh tồn kho đều lưu dấu vết trước/sau.
+      </p>
     </section>
   );
 }
