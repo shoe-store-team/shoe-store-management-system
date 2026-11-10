@@ -18,7 +18,7 @@ export async function getProductDetail(id: string) {
     imageUrl: p.imageUrl,
     category: p.category ? { id: p.category.id, name: p.category.name } : null,
     basePrice: p.basePrice.toNumber(),
-    variants: p.variants.map((v: { id: string; size: number; color: string; priceOverride: any; stock: number }) => ({
+    variants: p.variants.map((v) => ({
       id: v.id,
       size: v.size,
       color: v.color,
