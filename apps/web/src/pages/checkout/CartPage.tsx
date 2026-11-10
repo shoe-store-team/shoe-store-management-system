@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { cartService } from '../../services/cartService';
 import { promotionService } from '../../services/promotionService';
 import { dinhDangTien } from '../../services/request';
@@ -6,6 +7,7 @@ import type { GioHang } from '../../types/cart';
 import type { KetQuaMaGiam } from '../../types/promotion';
 
 export function CartPage() {
+  const dieuHuong = useNavigate();
   const [gio, setGio] = useState<GioHang | null>(null);
   const [loi, setLoi] = useState('');
   const [ma, setMa] = useState('');
@@ -91,8 +93,12 @@ export function CartPage() {
         <p>Tạm tính (trước giảm giá): {dinhDangTien(gio.subtotal)}</p>
         {giam && <p style={{ color: '#15803d' }}>Mã {giam.code}: −{dinhDangTien(giam.discountAmount)}</p>}
         <h3>Tổng dự kiến: {dinhDangTien(tongCuoi)}</h3>
-        {/* Người 4 nối trang thanh toán ở đây (gửi kèm mã giảm giá đang áp dụng) */}
-        <button disabled={khongThanhToanDuoc}>Tiến hành thanh toán</button>
+        <button
+          disabled={khongThanhToanDuoc}
+          onClick={() => dieuHuong('/checkout', { state: { promotionCode: giam?.code } })}
+        >
+          Tiến hành thanh toán
+        </button>
       </div>
     </div>
   );

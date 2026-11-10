@@ -34,6 +34,12 @@ Xây dựng website bán giày dép có các chức năng phục vụ khách hà
 
 Các chức năng trên là phạm vi mục tiêu của đồ án. Chức năng nào đã triển khai đến đâu cần được xác nhận qua code và kết quả kiểm thử thực tế.
 
+### 1.3. Đóng góp và giá trị của hệ thống
+
+Hệ thống không chỉ là một trang bán hàng trực tuyến mà còn là nền tảng quản lý dữ liệu thống nhất cho cả khách hàng và quản trị viên. Với mô hình Fullstack Monorepo, frontend và backend được tổ chức trong cùng một repository, giúp dễ dàng đồng bộ API, chia sẻ schema dữ liệu và kiểm tra chất lượng mã nguồn theo quy trình CI. Điều này giảm rủi ro sai lệch dữ liệu giữa các module như sản phẩm, giỏ hàng, đơn hàng, khuyến mãi và thanh toán.
+
+Về phía người dùng, hệ thống hỗ trợ trải nghiệm mua sắm trực quan từ khi xem sản phẩm, chọn biến thể, áp dụng mã giảm giá đến khi thanh toán và theo dõi trạng thái đơn hàng. Về phía cửa hàng, hệ thống cung cấp khả năng quản lý tồn kho, doanh thu, trạng thái đơn hàng và thanh toán theo quy trình rõ ràng. Nhờ đó, doanh nghiệp có thể kiểm soát hoạt động bán hàng hiệu quả hơn, rút ngắn thời gian xử lý và nâng cao độ tin cậy của dữ liệu trong quá trình vận hành.
+
 ## 🛠️ 2. Công nghệ sử dụng
 
 ### 2.1. Frontend
