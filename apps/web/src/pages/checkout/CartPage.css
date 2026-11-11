@@ -1,0 +1,356 @@
+.gh-wrap {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px 20px 56px;
+}
+
+.gh-dang-tai {
+  padding: 80px 0;
+  text-align: center;
+  color: #6b7280;
+}
+
+.gh-tieu-de {
+  margin: 0 0 24px;
+  font-size: 30px;
+  font-weight: 800;
+}
+
+.gh-tieu-de__dem {
+  margin-left: 6px;
+  font-size: 16px;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.gh-alert {
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+.gh-alert--loi {
+  background: #fdecec;
+  color: #b91c1c;
+}
+
+.gh-trong {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 72px 0;
+  border: 1.5px dashed #d6d3cb;
+  border-radius: 20px;
+  color: #6b7280;
+}
+
+.gh-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 32px;
+  align-items: start;
+}
+
+.gh-danh-sach {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gh-item {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr) auto;
+  gap: 18px;
+  padding: 14px;
+  border: 1.5px solid #e4e2da;
+  border-radius: 18px;
+  background: #fff;
+}
+
+.gh-item.is-loi {
+  border-color: #f0b4b4;
+  background: #fff8f8;
+}
+
+.gh-item__anh {
+  display: grid;
+  width: 112px;
+  height: 112px;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 14px;
+  background: #ecebe5;
+  color: #9ca3af;
+  font-size: 12px;
+}
+
+.gh-item__anh img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.gh-item__thong-tin {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.gh-item__ten {
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.gh-item__ten:hover {
+  text-decoration: underline;
+}
+
+.gh-item__phan-loai {
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.gh-item__don-gia {
+  margin-top: 4px;
+  font-weight: 600;
+}
+
+.gh-item__canh-bao {
+  margin-top: 6px;
+  color: #b91c1c;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.gh-item__thao-tac {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.gh-so-luong {
+  display: inline-flex;
+  align-items: center;
+  overflow: hidden;
+  border: 1.5px solid #d6d3cb;
+  border-radius: 12px;
+}
+
+.gh-so-luong button {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  background: transparent;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.gh-so-luong button:hover:not(:disabled) {
+  background: #f3f2ee;
+}
+
+.gh-so-luong button:disabled {
+  color: #c4c4bc;
+  cursor: not-allowed;
+}
+
+.gh-so-luong span {
+  min-width: 36px;
+  text-align: center;
+  font-weight: 700;
+}
+
+.gh-item__thanh-tien {
+  font-size: 17px;
+  font-weight: 800;
+  color: #16213a;
+}
+
+.gh-xoa {
+  border: 0;
+  background: transparent;
+  color: #b91c1c;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.gh-tong-ket {
+  position: sticky;
+  top: 20px;
+  padding: 22px;
+  border: 1.5px solid #e4e2da;
+  border-radius: 20px;
+  background: #fff;
+}
+
+.gh-tong-ket h2 {
+  margin: 0 0 18px;
+  font-size: 20px;
+}
+
+.gh-ma label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.gh-ma__hang {
+  display: flex;
+  gap: 8px;
+}
+
+.gh-ma__hang input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1.5px solid #d6d3cb;
+  border-radius: 12px;
+  text-transform: uppercase;
+}
+
+.gh-ma__ok {
+  margin-top: 8px;
+  color: #15803d;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.gh-ma__loi {
+  margin-top: 8px;
+  color: #b91c1c;
+  font-size: 14px;
+}
+
+.gh-dong-tien {
+  margin: 20px 0 0;
+  padding-top: 16px;
+  border-top: 1.5px solid #ecebe5;
+}
+
+.gh-dong-tien > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+}
+
+.gh-dong-tien dt {
+  color: #4b5563;
+}
+
+.gh-dong-tien dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.gh-dong-tien__giam dt,
+.gh-dong-tien__giam dd {
+  color: #15803d;
+}
+
+.gh-dong-tien__tong {
+  margin-top: 6px;
+  padding-top: 12px !important;
+  border-top: 1.5px solid #ecebe5;
+}
+
+.gh-dong-tien__tong dt {
+  color: #20201c;
+  font-weight: 700;
+}
+
+.gh-dong-tien__tong dd {
+  color: #16213a;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.gh-ghi-chu {
+  margin: 6px 0 16px;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.gh-nut {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 16px;
+  border: 1.5px solid #d6d3cb;
+  border-radius: 12px;
+  background: #fff;
+  font-weight: 700;
+}
+
+.gh-nut:hover:not(:disabled) {
+  border-color: #16213a;
+}
+
+.gh-nut--chinh {
+  border-color: #16213a;
+  background: #16213a;
+  color: #fff;
+}
+
+.gh-nut--chinh:hover:not(:disabled) {
+  background: #22305a;
+}
+
+.gh-nut--lon {
+  width: 100%;
+  padding: 15px 20px;
+  border-radius: 14px;
+  font-size: 16px;
+}
+
+.gh-nut:disabled {
+  border-color: #cfcdc5;
+  background: #cfcdc5;
+  color: #fff;
+  cursor: not-allowed;
+}
+
+.gh-nhac {
+  margin: 10px 0 0;
+  color: #b91c1c;
+  font-size: 13px;
+}
+
+@media (max-width: 860px) {
+  .gh-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .gh-tong-ket {
+    position: static;
+  }
+}
+
+@media (max-width: 520px) {
+  .gh-item {
+    grid-template-columns: 84px minmax(0, 1fr);
+  }
+
+  .gh-item__anh {
+    width: 84px;
+    height: 84px;
+  }
+
+  .gh-item__thao-tac {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    align-items: center;
+  }
+}

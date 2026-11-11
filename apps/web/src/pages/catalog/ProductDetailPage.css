@@ -1,0 +1,281 @@
+.pd-wrap {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px 20px 56px;
+}
+
+.pd-dang-tai {
+  padding: 80px 0;
+  text-align: center;
+  color: #6b7280;
+}
+
+.pd-breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 24px;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.pd-breadcrumb a:hover {
+  color: #16213a;
+  text-decoration: underline;
+}
+
+.pd-breadcrumb__hien-tai {
+  color: #20201c;
+  font-weight: 600;
+}
+
+.pd-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 48px;
+  align-items: start;
+}
+
+.pd-anh {
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-radius: 20px;
+  background: #ecebe5;
+}
+
+.pd-anh img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.pd-anh__trong {
+  display: grid;
+  height: 100%;
+  place-items: center;
+  color: #9ca3af;
+  font-size: 15px;
+}
+
+.pd-thong-tin {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pd-danh-muc {
+  align-self: flex-start;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #ecebe5;
+  color: #4b5563;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.pd-ten {
+  margin: 12px 0 8px;
+  font-size: 32px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.pd-gia {
+  font-size: 26px;
+  font-weight: 700;
+  color: #16213a;
+}
+
+.pd-mo-ta {
+  margin: 12px 0 8px;
+  color: #4b5563;
+  line-height: 1.6;
+}
+
+.pd-nhom {
+  margin-top: 20px;
+}
+
+.pd-nhom__tieu-de {
+  margin-bottom: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.pd-nhom__gia-tri {
+  margin-left: 6px;
+  color: #6b7280;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.pd-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.pd-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 48px;
+  justify-content: center;
+  padding: 10px 16px;
+  border: 1.5px solid #d6d3cb;
+  border-radius: 12px;
+  background: #fff;
+  font-weight: 600;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.pd-chip:hover:not(:disabled) {
+  border-color: #16213a;
+}
+
+.pd-chip.is-chon {
+  border-color: #16213a;
+  background: #16213a;
+  color: #fff;
+}
+
+.pd-chip.is-het {
+  color: #b5b5ad;
+  text-decoration: line-through;
+  background: #f3f2ee;
+  cursor: not-allowed;
+}
+
+.pd-cham-mau {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+.pd-ton-kho {
+  min-height: 24px;
+  margin-top: 10px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.pd-ton-kho--nhac {
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.pd-ton-kho--con {
+  color: #15803d;
+}
+
+.pd-ton-kho--sap-het {
+  color: #b45309;
+}
+
+.pd-ton-kho--het {
+  color: #b91c1c;
+}
+
+.pd-so-luong {
+  display: inline-flex;
+  align-items: stretch;
+  overflow: hidden;
+  border: 1.5px solid #d6d3cb;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.pd-so-luong button {
+  width: 44px;
+  border: 0;
+  background: transparent;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.pd-so-luong button:hover:not(:disabled) {
+  background: #f3f2ee;
+}
+
+.pd-so-luong button:disabled {
+  color: #c4c4bc;
+  cursor: not-allowed;
+}
+
+.pd-so-luong input {
+  width: 64px;
+  border: 0;
+  border-inline: 1.5px solid #d6d3cb;
+  text-align: center;
+  font-weight: 700;
+  background: transparent;
+  -moz-appearance: textfield;
+}
+
+.pd-so-luong input::-webkit-outer-spin-button,
+.pd-so-luong input::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
+.pd-nut-them {
+  margin-top: 28px;
+  padding: 16px 24px;
+  border: 0;
+  border-radius: 14px;
+  background: #16213a;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.pd-nut-them:hover:not(:disabled) {
+  background: #22305a;
+}
+
+.pd-nut-them:disabled {
+  background: #cfcdc5;
+  color: #fff;
+  cursor: not-allowed;
+}
+
+.pd-alert {
+  margin-top: 16px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.pd-alert a {
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.pd-alert--ok {
+  background: #e8f5ec;
+  color: #15803d;
+}
+
+.pd-alert--loi {
+  background: #fdecec;
+  color: #b91c1c;
+}
+
+@media (max-width: 820px) {
+  .pd-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+  }
+
+  .pd-ten {
+    font-size: 26px;
+  }
+}
