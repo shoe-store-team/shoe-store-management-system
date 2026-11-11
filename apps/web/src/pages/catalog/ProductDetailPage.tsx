@@ -4,6 +4,26 @@ import { cartService } from '../../services/cartService';
 import { productService } from '../../services/productService';
 import { dinhDangTien } from '../../services/request';
 import type { ChiTietSanPham } from '../../types/cart';
+import './ProductDetailPage.css';
+
+// Màu hiển thị cho các tên màu thường gặp; màu lạ sẽ dùng nền xám.
+const MAU_HIEN_THI: Record<string, string> = {
+  black: '#1c1c1c',
+  white: '#ffffff',
+  red: '#d63a3a',
+  blue: '#2f5fd0',
+  green: '#2f8f4e',
+  gray: '#9ca3af',
+  grey: '#9ca3af',
+  brown: '#7a4b2a',
+  yellow: '#eab308',
+  pink: '#ec7fa9',
+  orange: '#f08a24',
+  navy: '#1f2a52',
+  beige: '#d9c7a3',
+};
+
+const SO_LUONG_SAP_HET = 5;
 
 export function ProductDetailPage() {
   const { id } = useParams();
@@ -13,6 +33,7 @@ export function ProductDetailPage() {
   const [mau, setMau] = useState('');
   const [size, setSize] = useState<number | null>(null);
   const [soLuong, setSoLuong] = useState(1);
+  const [dangThem, setDangThem] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -29,56 +50,163 @@ export function ProductDetailPage() {
   const cacSize = useMemo(() => sp?.variants.filter((v) => v.color === mau) ?? [], [sp, mau]);
   const bienThe = cacSize.find((v) => v.size === size) ?? null;
 
+  const chonMau = (m: string) => {
+    setMau(m);
+    setSize(null);
+    setSoLuong(1);
+    setThongBao('');
+    setLoi('');
+  };
+
+  const chonSize = (s: number, tonKho: number) => {
+    setSize(s);
+    setSoLuong((q) => Math.min(q, tonKho));
+    setThongBao('');
+    setLoi('');
+  };
+
+  const doiSoLuong = (giaTri: number) => {
+    const toiDa = bienThe?.stock ?? 1;
+    setSoLuong(Math.min(toiDa, Math.max(1, giaTri || 1)));
+  };
+
   const themVaoGio = async () => {
-    if (!bienThe) return;
+    if (!bienThe || dangThem) return;
     setLoi('');
     setThongBao('');
+    setDangThem(true);
     try {
       await cartService.them(bienThe.id, soLuong);
       setThongBao('Đã thêm vào giỏ hàng');
     } catch (e) {
       setLoi((e as Error).message);
+    } finally {
+      setDangThem(false);
     }
   };
 
-  if (!sp) return <div className="noi-dung">{loi ? <p style={{ color: '#b91c1c' }}>{loi}</p> : 'Đang tải...'}</div>;
+  if (!sp) {
+    return (
+      <div className="pd-wrap">
+        {loi ? <div className="pd-alert pd-alert--loi">{loi}</div> : <div className="pd-dang-tai">Đang tải sản phẩm...</div>}
+      </div>
+    );
+  }
 
   const gia = bienThe?.price ?? sp.basePrice;
   const hetHang = bienThe !== null && bienThe.stock === 0;
+  const sapHet = bienThe !== null && bienThe.stock > 0 && bienThe.stock <= SO_LUONG_SAP_HET;
+  const khongThem = !bienThe || hetHang || dangThem;
 
   return (
-    <div className="noi-dung">
-      <Link to="/">← Quay lại cửa hàng</Link>
-      <h2>{sp.name}</h2>
-      {sp.category && <p>Danh mục: {sp.category.name}</p>}
-      {sp.description && <p>{sp.description}</p>}
-      <h3>{dinhDangTien(gia)}</h3>
+    <div className="pd-wrap">
+      <nav className="pd-breadcrumb" aria-label="Điều hướng">
+        <Link to="/">Cửa hàng</Link>
+        <span>/</span>
+        {sp.category && (
+          <>
+            <span>{sp.category.name}</span>
+            <span>/</span>
+          </>
+        )}
+        <span className="pd-breadcrumb__hien-tai">{sp.name}</span>
+      </nav>
 
-      <p><strong>Màu</strong></p>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        {cacMau.map((m) => (
-          <button key={m} onClick={() => { setMau(m); setSize(null); setSoLuong(1); }}
-            style={{ fontWeight: m === mau ? 700 : 400 }}>{m}</button>
-        ))}
+      <div className="pd-grid">
+        <div className="pd-anh">
+          {sp.imageUrl ? <img src={sp.imageUrl} alt={sp.name} /> : <div className="pd-anh__trong">Chưa có ảnh</div>}
+        </div>
+
+        <div className="pd-thong-tin">
+          {sp.category && <span className="pd-danh-muc">{sp.category.name}</span>}
+          <h1 className="pd-ten">{sp.name}</h1>
+          <div className="pd-gia">{dinhDangTien(gia)}</div>
+          {sp.description && <p className="pd-mo-ta">{sp.description}</p>}
+
+          <div className="pd-nhom">
+            <div className="pd-nhom__tieu-de">
+              Màu sắc <span className="pd-nhom__gia-tri">{mau}</span>
+            </div>
+            <div className="pd-chips">
+              {cacMau.map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  className={`pd-chip pd-chip--mau${m === mau ? ' is-chon' : ''}`}
+                  onClick={() => chonMau(m)}
+                  aria-pressed={m === mau}
+                >
+                  <span className="pd-cham-mau" style={{ background: MAU_HIEN_THI[m.toLowerCase()] ?? '#d1d5db' }} />
+                  {m}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="pd-nhom">
+            <div className="pd-nhom__tieu-de">
+              Size {size !== null && <span className="pd-nhom__gia-tri">{size}</span>}
+            </div>
+            <div className="pd-chips">
+              {cacSize.map((v) => (
+                <button
+                  key={v.id}
+                  type="button"
+                  className={`pd-chip pd-chip--size${v.size === size ? ' is-chon' : ''}${v.stock === 0 ? ' is-het' : ''}`}
+                  disabled={v.stock === 0}
+                  onClick={() => chonSize(v.size, v.stock)}
+                  aria-pressed={v.size === size}
+                  title={v.stock === 0 ? 'Hết hàng' : undefined}
+                >
+                  {v.size}
+                </button>
+              ))}
+            </div>
+            <div className="pd-ton-kho" aria-live="polite">
+              {!bienThe && <span className="pd-ton-kho--nhac">Vui lòng chọn size</span>}
+              {hetHang && <span className="pd-ton-kho--het">Hết hàng</span>}
+              {sapHet && <span className="pd-ton-kho--sap-het">Chỉ còn {bienThe.stock} sản phẩm</span>}
+              {bienThe && !hetHang && !sapHet && <span className="pd-ton-kho--con">Còn {bienThe.stock} sản phẩm</span>}
+            </div>
+          </div>
+
+          <div className="pd-nhom">
+            <div className="pd-nhom__tieu-de">Số lượng</div>
+            <div className="pd-so-luong">
+              <button type="button" onClick={() => doiSoLuong(soLuong - 1)} disabled={!bienThe || soLuong <= 1} aria-label="Giảm số lượng">
+                −
+              </button>
+              <input
+                type="number"
+                min={1}
+                max={bienThe?.stock ?? 1}
+                value={soLuong}
+                disabled={!bienThe || hetHang}
+                onChange={(e) => doiSoLuong(Number(e.target.value))}
+                aria-label="Số lượng"
+              />
+              <button type="button" onClick={() => doiSoLuong(soLuong + 1)} disabled={!bienThe || soLuong >= (bienThe?.stock ?? 1)} aria-label="Tăng số lượng">
+                +
+              </button>
+            </div>
+          </div>
+
+          <button type="button" className="pd-nut-them" disabled={khongThem} onClick={themVaoGio}>
+            {dangThem ? 'Đang thêm...' : hetHang ? 'Hết hàng' : !bienThe ? 'Chọn size để thêm vào giỏ' : 'Thêm vào giỏ'}
+          </button>
+
+          {thongBao && (
+            <div className="pd-alert pd-alert--ok" role="status">
+              {thongBao}. <Link to="/cart">Xem giỏ hàng</Link>
+            </div>
+          )}
+          {loi && (
+            <div className="pd-alert pd-alert--loi" role="alert">
+              {loi}
+            </div>
+          )}
+        </div>
       </div>
-
-      <p><strong>Size</strong></p>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        {cacSize.map((v) => (
-          <button key={v.id} disabled={v.stock === 0} onClick={() => { setSize(v.size); setSoLuong((q) => Math.min(q, v.stock)); }}
-            style={{ fontWeight: v.size === size ? 700 : 400 }}>{v.size}</button>
-        ))}
-      </div>
-      {bienThe && <p>{hetHang ? 'Hết hàng' : `Còn ${bienThe.stock} sản phẩm`}</p>}
-
-      <p>
-        Số lượng:{' '}
-        <input type="number" min={1} max={bienThe?.stock ?? 1} value={soLuong}
-          onChange={(e) => setSoLuong(Math.min(bienThe?.stock ?? 1, Math.max(1, Number(e.target.value) || 1)))} style={{ width: 70 }} />
-      </p>
-      <button disabled={!bienThe || hetHang} onClick={themVaoGio}>Thêm vào giỏ</button>
-      {thongBao && <p style={{ color: '#15803d' }}>{thongBao} — <Link to="/cart">Xem giỏ hàng</Link></p>}
-      {loi && <p style={{ color: '#b91c1c' }}>{loi}</p>}
     </div>
   );
 }
