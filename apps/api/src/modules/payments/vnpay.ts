@@ -1,6 +1,6 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { isIP } from "node:net";
-import { AppError } from "../../middlewares/error.middleware";
+import { PaymentError } from "./payment.errors";
 
 export type VnpParams = Record<string, string>;
 
@@ -20,8 +20,8 @@ export function config() {
   const secret = process.env.VNPAY_HASH_SECRET?.trim();
   const returnUrl = process.env.VNPAY_RETURN_URL?.trim();
   if (!tmnCode || !secret || !returnUrl)
-    throw new AppError(503, "Chưa cấu hình VNPay Sandbox trên backend.");
-  if (!/^https?:\/\//.test(returnUrl)) throw new AppError(503, "VNPAY_RETURN_URL không hợp lệ.");
+    throw new PaymentError(503, "Chưa cấu hình VNPay Sandbox trên backend.");
+  if (!/^https?:\/\//.test(returnUrl)) throw new PaymentError(503, "VNPAY_RETURN_URL không hợp lệ.");
   return { tmnCode, secret, returnUrl };
 }
 
@@ -141,11 +141,11 @@ export async function queryTransaction(txnRef: string, createDate: string) {
       signal: AbortSignal.timeout(12000),
     });
   } catch {
-    throw new AppError(503, "Chưa kết nối được máy chủ VNPay.");
+    throw new PaymentError(503, "Chưa kết nối được máy chủ VNPay.");
   }
-  if (!response.ok) throw new AppError(503, "VNPay chưa phản hồi truy vấn.");
+  if (!response.ok) throw new PaymentError(503, "VNPay chưa phản hồi truy vấn.");
   const raw: unknown = await response.json();
-  if (!raw || typeof raw !== "object") throw new AppError(503, "Phản hồi VNPay không hợp lệ.");
+  if (!raw || typeof raw !== "object") throw new PaymentError(503, "Phản hồi VNPay không hợp lệ.");
 
   const data: VnpParams = {};
   for (const [k, v] of Object.entries(raw)) if (typeof v === "string" || typeof v === "number") data[k] = String(v);
@@ -155,6 +155,6 @@ export async function queryTransaction(txnRef: string, createDate: string) {
     !validHash(data.vnp_SecureHash, hmac(resFields.map((k) => data[k] ?? "").join("|"), secret)) ||
     data.vnp_TmnCode !== tmnCode || data.vnp_TxnRef !== txnRef || data.vnp_Command !== "querydr"
   )
-    throw new AppError(503, "Không xác thực được phản hồi truy vấn VNPay.");
+    throw new PaymentError(503, "Không xác thực được phản hồi truy vấn VNPay.");
   return data;
 }

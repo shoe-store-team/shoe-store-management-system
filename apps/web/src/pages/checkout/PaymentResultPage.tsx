@@ -4,13 +4,15 @@ import { paymentService } from '../../services/paymentService';
 import { dinhDangTien } from '../../services/request';
 import type { PaymentResult } from '../../types/payment';
 import { PayButton } from './PayButton';
-import './checkout.css';
+import './payment.css';
 
 type TrangThai =
   | { loai: 'dang-tai' }
   | { loai: 'loi'; thongBao: string }
   | { loai: 'xong'; tt: PaymentResult };
 
+// Đổi nếu route lịch sử đơn của nhóm khác
+const TRANG_DON_HANG = '/orders';
 const doi = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const gio = (iso: string) => new Date(iso).toLocaleString('vi-VN');
 
@@ -65,7 +67,7 @@ export function PaymentResultPage() {
 
   const lienKet = (
     <div className="co-actions">
-      <Link className="co-btn primary" to="/orders">Xem đơn hàng của tôi</Link>
+      <Link className="co-btn primary" to={TRANG_DON_HANG}>Xem đơn hàng của tôi</Link>
       <Link className="co-btn" to="/">Tiếp tục mua sắm</Link>
     </div>
   );

@@ -2,22 +2,23 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { paymentService } from '../../services/paymentService';
 import type { BankCode, PaymentMethod } from '../../types/payment';
-import './checkout.css';
+import './payment.css';
 
 type Props = {
   orderId: string;
   method?: PaymentMethod;
   bankCode?: BankCode;
   label?: string;
-  className?: string; // 'pay-button' trong thẻ đơn / chi tiết đơn; mặc định nút đen của trang kết quả
+  className?: string;
   disabled?: boolean;
 };
 
 /**
- * Nút thanh toán cho một đơn đã tạo: gọi API rồi chuyển khách sang VNPay (hoặc trang kết quả).
+ * Nút thanh toán cho MỘT ĐƠN ĐÃ TẠO (orderId do module orders trả về).
+ * Gọi POST /api/payments rồi chuyển khách sang VNPay, hoặc sang trang kết quả (COD/mock).
  * Bấm lại cho cùng một đơn sẽ nhận lại đúng link cũ, không tạo giao dịch trùng.
  */
-export function PayButton({ orderId, method = 'VNPAY', bankCode, label = 'Thanh toán', className = 'co-btn primary', disabled }: Props) {
+export function PayButton({ orderId, method = 'VNPAY', bankCode, label = 'Thanh toán', className = 'pay-btn', disabled }: Props) {
   const dieuHuong = useNavigate();
   const [dangXuLy, setDangXuLy] = useState(false);
   const [loi, setLoi] = useState('');
@@ -43,7 +44,7 @@ export function PayButton({ orderId, method = 'VNPAY', bankCode, label = 'Thanh 
       <button className={className} onClick={bam} disabled={disabled || dangXuLy}>
         {dangXuLy ? 'Đang xử lý...' : label}
       </button>
-      {loi && <p className="voucher-error">{loi}</p>}
+      {loi && <p className="pay-btn-error">{loi}</p>}
     </>
   );
 }
