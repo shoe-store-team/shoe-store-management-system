@@ -455,4 +455,56 @@ router.post("/documents/:id/cancel", async (req: Request, res: Response) => {
     return respondWithError(res, error, "Không thể hủy phiếu kho.");
   }
 });
+// Trừ tồn kho theo đơn hàng
+router.post("/orders/:orderId/deduct", async (req: Request, res: Response) => {
+  const { orderId } = req.params;
+  const { actorId, reason, items } = req.body ?? {};
+  const parsedItems = parseItems(items);
+
+  if (
+    typeof orderId !== "string" ||
+    !orderId.trim() ||
+    typeof actorId !== "string" ||
+    !actorId.trim() ||
+    !parsedItems
+  ) {
+    return res.status(400).json({ message: "Dữ liệu trừ kho đơn hàng không hợp lệ." });
+  }
+
+  try {
+    const result = await inventoryService.deductStockForOrder({
+      orderId,
+      actorId,
+      reason,
+      items: parsedItems.map((i) => ({
+        variantId: i.variantId,
+        quantity: i.quantity ?? 0,
+      })),
+    });
+    return res.json(result);
+  } catch (error) {
+    return respondWithError(res, error, "Không thể trừ tồn kho cho đơn hàng.");
+  }
+});
+
+// Hoàn tồn kho khi đơn hàng bị hủy hoặc thanh toán thất bại/hết hạn
+router.post("/orders/:orderId/restore", async (req: Request, res: Response) => {
+  const { orderId } = req.params;
+  const { actorId, reason } = req.body ?? {};
+
+  if (typeof orderId !== "string" || !orderId.trim()) {
+    return res.status(400).json({ message: "Mã đơn hàng không hợp lệ." });
+  }
+
+  try {
+    const result = await inventoryService.restoreStockForOrder({
+      orderId,
+      actorId: typeof actorId === "string" ? actorId : undefined,
+      reason: typeof reason === "string" ? reason : undefined,
+    });
+    return res.json(result);
+  } catch (error) {
+    return respondWithError(res, error, "Không thể hoàn tồn kho cho đơn hàng.");
+  }
+});
 export default router;

@@ -71,6 +71,14 @@ export function StockExportPage() {
       lines.some((line) => line.variantId === selectedVariantId)
     )
       return;
+    const selected = variants.find((v) => v.id === selectedVariantId);
+    if (selected && selected.stock <= 0) {
+      setError(
+        `Sản phẩm "${variantLabel(selected)}" đã hết hàng trong kho (tồn = 0), không thể xuất!`,
+      );
+      return;
+    }
+    setError("");
     setLines((current) => [
       ...current,
       { variantId: selectedVariantId, quantity: 1 },
@@ -83,6 +91,20 @@ export function StockExportPage() {
     setMessage("");
     if (!operatorId || lines.length === 0) {
       setError("Hãy chọn người lập phiếu và thêm ít nhất một biến thể.");
+      return;
+    }
+
+    const insufficientLine = lines.find((line) => {
+      const variant = variants.find((v) => v.id === line.variantId);
+      return !variant || line.quantity > variant.stock;
+    });
+    if (insufficientLine) {
+      const variant = variants.find((v) => v.id === insufficientLine.variantId);
+      setError(
+        variant
+          ? `Tồn kho không đủ: "${variantLabel(variant)}" chỉ còn ${variant.stock} sản phẩm (đang yêu cầu xuất ${insufficientLine.quantity}).`
+          : "Có sản phẩm không đủ tồn kho để xuất.",
+      );
       return;
     }
 
@@ -134,13 +156,13 @@ export function StockExportPage() {
       setSaving(false);
     }
   }
+
   async function cancelDraft() {
     if (!draft) return;
 
     const confirmed = window.confirm(
       `Bạn có chắc muốn hủy phiếu xuất ${draft.code}?`,
     );
-
     if (!confirmed) return;
 
     setSaving(true);
@@ -166,23 +188,61 @@ export function StockExportPage() {
       setSaving(false);
     }
   }
+
+  const totalSystemStock = variants.reduce((sum, v) => sum + v.stock, 0);
+  const totalExportQty = lines.reduce((sum, l) => sum + (l.quantity || 0), 0);
+  const outOfStockCount = variants.filter((v) => v.stock === 0).length;
+
   return (
     <section className="stock-export">
-      <header className="inventory-heading">
+      <header className="inv-page-header">
         <div>
+          <p className="inv-eyebrow">INVENTORY MANAGEMENT · STOCK OUT</p>
           <h2>Xuất kho</h2>
-          <p>Kiểm tra tồn khả dụng trước khi xác nhận xuất hàng.</p>
+          <p>Kiểm tra tồn khả dụng trước khi xác nhận xuất hàng; hệ thống tự động chặn xuất vượt tồn.</p>
         </div>
+        <span className={`inv-header-badge ${draft ? "is-draft" : ""}`}>
+          {draft ? `● Phiếu nháp: ${draft.code}` : "Kiểm soát tồn kho nguyên tử"}
+        </span>
       </header>
+
       <nav className="inventory-nav" aria-label="Điều hướng kho">
-        <Link to="/admin/inventory/check">Kiểm kê</Link>
-        <Link to="/admin/inventory/history">Lịch sử</Link>
-        <Link to="/admin/inventory/adjustment">Điều chỉnh</Link>
+        <Link to="/admin/inventory/check">◈ Kiểm kê</Link>
+        <Link to="/admin/inventory/import">＋ Nhập kho</Link>
         <Link to="/admin/inventory/export" className="active">
-          Xuất kho
+          － Xuất kho
         </Link>
-        <Link to="/admin/inventory/import">Nhập kho</Link>
+        <Link to="/admin/inventory/adjustment">⇄ Điều chỉnh</Link>
+        <Link to="/admin/inventory/history">☰ Lịch sử</Link>
       </nav>
+
+      <div className="inv-stat-grid">
+        <article className="inv-stat-card">
+          <span className="inv-stat-icon">◈</span>
+          <small>BIẾN THỂ KHẢ DỤNG</small>
+          <strong>{variants.length - outOfStockCount}</strong>
+          <em>Trên tổng {variants.length} biến thể</em>
+        </article>
+        <article className="inv-stat-card">
+          <span className="inv-stat-icon sage">▦</span>
+          <small>TỒN KHO HIỆN TẠI</small>
+          <strong>{totalSystemStock.toLocaleString("vi-VN")}</strong>
+          <em>Trước khi xuất</em>
+        </article>
+        <article className="inv-stat-card">
+          <span className="inv-stat-icon sand">－</span>
+          <small>TỔNG SỐ LƯỢNG XUẤT</small>
+          <strong>-{totalExportQty.toLocaleString("vi-VN")}</strong>
+          <em>{lines.length} dòng biến thể</em>
+        </article>
+        <article className="inv-stat-card">
+          <span className="inv-stat-icon rose">!</span>
+          <small>HẾT HÀNG (TỒN = 0)</small>
+          <strong>{outOfStockCount}</strong>
+          <em>Cần nhập bổ sung</em>
+        </article>
+      </div>
+
       {error && (
         <p className="inventory-alert inventory-error" role="alert">
           {error}
@@ -193,37 +253,42 @@ export function StockExportPage() {
           {message}
         </p>
       )}
+
       {loading ? (
-        <p>Đang tải dữ liệu kho...</p>
+        <div className="inventory-card">
+          <p className="inventory-empty">Đang tải dữ liệu kho...</p>
+        </div>
       ) : (
-        <form className="inventory-heading" onSubmit={submit}>
-          <label>
-            Người lập / xác nhận
-            <select
-              value={operatorId}
-              onChange={(event) => setOperatorId(event.target.value)}
-              required
-            >
-              <option value="">Chọn nhân viên</option>
-              {operators.map((operator) => (
-                <option key={operator.id} value={operator.id}>
-                  {operator.name || operator.email} ({operator.role})
-                </option>
-              ))}
-            </select>
-          </label>
-          {operators.length === 0 && (
-            <p className="thong-bao-loi">
-              Chưa có tài khoản ADMIN hoặc WAREHOUSE_STAFF đang hoạt động.
-            </p>
-          )}
+        <form className="inventory-card" onSubmit={submit}>
+          <div className="inv-section-title">
+            <div>
+              <h3>Thông tin phiếu xuất kho</h3>
+              <p>Xuất chuyển kho, xuất hủy hàng lỗi hoặc xuất theo yêu cầu nội bộ.</p>
+            </div>
+          </div>
+
           <div className="export-form">
+            <label>
+              Người lập / xác nhận
+              <select
+                value={operatorId}
+                onChange={(event) => setOperatorId(event.target.value)}
+                required
+              >
+                <option value="">Chọn nhân viên</option>
+                {operators.map((operator) => (
+                  <option key={operator.id} value={operator.id}>
+                    {operator.name || operator.email} ({operator.role})
+                  </option>
+                ))}
+              </select>
+            </label>
             <label>
               Lý do xuất
               <input
                 value={reason}
                 onChange={(event) => setReason(event.target.value)}
-                placeholder="Ví dụ: Xuất hàng theo yêu cầu"
+                placeholder="Ví dụ: Xuất hàng trưng bày / chuyển chi nhánh"
                 disabled={Boolean(draft)}
               />
             </label>
@@ -232,12 +297,20 @@ export function StockExportPage() {
               <input
                 value={note}
                 onChange={(event) => setNote(event.target.value)}
+                placeholder="Người nhận, bộ phận yêu cầu..."
                 disabled={Boolean(draft)}
               />
             </label>
           </div>
-          <div className="export-add-row">
-            <label style={{ flex: 1 }}>
+
+          {operators.length === 0 && (
+            <p className="thong-bao-loi">
+              Chưa có tài khoản ADMIN hoặc WAREHOUSE_STAFF đang hoạt động.
+            </p>
+          )}
+
+          <div className="inv-picker-box">
+            <label>
               Biến thể
               <select
                 value={selectedVariantId}
@@ -256,9 +329,10 @@ export function StockExportPage() {
               onClick={addLine}
               disabled={!variants.length || Boolean(draft)}
             >
-              Thêm sản phẩm
+              ＋ Thêm sản phẩm
             </button>
           </div>
+
           <div className="inventory-table">
             <table>
               <thead>
@@ -276,10 +350,21 @@ export function StockExportPage() {
                     (entry) => entry.id === line.variantId,
                   );
                   if (!variant) return null;
+                  const afterStock = variant.stock - line.quantity;
                   return (
                     <tr key={line.variantId}>
-                      <td>{variantLabel(variant)}</td>
-                      <td>{variant.stock}</td>
+                      <td>
+                        <div className="inv-variant-cell">
+                          <strong>{variant.product.name}</strong>
+                          <span className="inv-variant-meta">
+                            <span className="inv-chip">Size {variant.size}</span>
+                            <span className="inv-chip">{variant.color}</span>
+                          </span>
+                        </div>
+                      </td>
+                      <td>
+                        <span className="inv-stock-pill">{variant.stock}</span>
+                      </td>
                       <td>
                         <input
                           aria-label="Số lượng xuất"
@@ -303,7 +388,15 @@ export function StockExportPage() {
                           required
                         />
                       </td>
-                      <td>{variant.stock - line.quantity}</td>
+                      <td>
+                        <span
+                          className={`inv-stock-pill ${
+                            afterStock < 0 ? "negative" : "neutral"
+                          }`}
+                        >
+                          {afterStock} (-{line.quantity})
+                        </span>
+                      </td>
                       <td>
                         <button
                           className="btn-secondary"
@@ -326,39 +419,46 @@ export function StockExportPage() {
                 {lines.length === 0 && (
                   <tr>
                     <td className="inventory-empty" colSpan={5}>
-                      Chưa có sản phẩm trong phiếu.
+                      Chưa có sản phẩm trong phiếu. Hãy chọn biến thể phía trên và bấm "Thêm sản phẩm".
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
-          <button
-            type="submit"
-            disabled={saving || !operatorId || !lines.length}
-          >
-            {saving
-              ? "Đang xử lý..."
-              : draft
-                ? `Xác nhận phiếu ${draft.code}`
-                : "Tạo phiếu nháp"}
-          </button>
-          {draft && (
-            <div className="draft-actions">
-              <p>Phiếu nháp được lưu. Bạn có thể sửa số lượng rồi xác nhận.</p>
 
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={cancelDraft}
-                disabled={saving}
-              >
-                {saving ? "Đang hủy..." : "Hủy phiếu xuất"}
-              </button>
-            </div>
-          )}
+          <div className="inv-footer-bar">
+            <button
+              type="submit"
+              disabled={saving || !operatorId || !lines.length}
+            >
+              {saving
+                ? "Đang xử lý..."
+                : draft
+                  ? `✓ Xác nhận phiếu ${draft.code}`
+                  : "Tạo phiếu nháp"}
+            </button>
+
+            {draft && (
+              <div className="draft-actions">
+                <p>Phiếu nháp được lưu. Bạn có thể sửa số lượng rồi xác nhận.</p>
+                <button
+                  type="button"
+                  className="btn-danger-outline"
+                  onClick={cancelDraft}
+                  disabled={saving}
+                >
+                  {saving ? "Đang hủy..." : "Hủy phiếu xuất"}
+                </button>
+              </div>
+            )}
+          </div>
         </form>
       )}
+
+      <p className="inv-footnote">
+        Shoe Store Admin · Tự động ngăn chặn xuất vượt tồn kho khả dụng.
+      </p>
     </section>
   );
 }

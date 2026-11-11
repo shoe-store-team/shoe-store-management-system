@@ -44,29 +44,29 @@ Về phía người dùng, hệ thống hỗ trợ trải nghiệm mua sắm tr�
 
 ### 2.1. Frontend
 
-| Công nghệ | Vai trò |
-|---|---|
-| React 19 | Xây dựng giao diện người dùng |
-| Vite 8 | Chạy môi trường phát triển và build frontend |
-| TypeScript | Kiểm tra kiểu dữ liệu |
-| React Router DOM | Điều hướng giữa các trang |
-| Fetch API | Gửi HTTP request đến backend |
-| ESLint | Kiểm tra các vấn đề trong mã nguồn |
+| Công nghệ        | Vai trò                                      |
+| ---------------- | -------------------------------------------- |
+| React 19         | Xây dựng giao diện người dùng                |
+| Vite 8           | Chạy môi trường phát triển và build frontend |
+| TypeScript       | Kiểm tra kiểu dữ liệu                        |
+| React Router DOM | Điều hướng giữa các trang                    |
+| Fetch API        | Gửi HTTP request đến backend                 |
+| ESLint           | Kiểm tra các vấn đề trong mã nguồn           |
 
 Phiên bản Vite và plugin React được quản lý bằng `apps/web/package.json` và `package-lock.json`. Khi thay đổi dependency, cần đồng bộ lockfile và kiểm tra lại build.
 
 ### 2.2. Backend
 
-| Công nghệ | Vai trò |
-|---|---|
-| Node.js | Môi trường chạy JavaScript phía máy chủ |
-| Express 5 | Xây dựng REST API |
-| TypeScript | Kiểm tra kiểu dữ liệu phía backend |
-| PostgreSQL | Lưu trữ dữ liệu |
-| Prisma ORM 6.19.3 | Truy vấn database và quản lý schema |
-| JSON Web Token (JWT) | Hỗ trợ xác thực người dùng |
-| bcryptjs | Băm mật khẩu |
-| CORS | Cấu hình truy cập API giữa các origin |
+| Công nghệ            | Vai trò                                 |
+| -------------------- | --------------------------------------- |
+| Node.js              | Môi trường chạy JavaScript phía máy chủ |
+| Express 5            | Xây dựng REST API                       |
+| TypeScript           | Kiểm tra kiểu dữ liệu phía backend      |
+| PostgreSQL           | Lưu trữ dữ liệu                         |
+| Prisma ORM 6.19.3    | Truy vấn database và quản lý schema     |
+| JSON Web Token (JWT) | Hỗ trợ xác thực người dùng              |
+| bcryptjs             | Băm mật khẩu                            |
+| CORS                 | Cấu hình truy cập API giữa các origin   |
 
 ### 2.3. Công cụ phát triển
 
@@ -126,33 +126,33 @@ shoe-store/
 
 ### Vai trò các thư mục
 
-| Đường dẫn | Chức năng |
-|---|---|
-| `apps/web/src/pages/` | Các trang giao diện |
-| `apps/web/src/components/` | Thành phần giao diện dùng chung |
-| `apps/web/src/services/` | Hàm giao tiếp với backend |
-| `apps/web/src/types/` | Kiểu dữ liệu phía frontend |
-| `apps/api/src/modules/` | Các module nghiệp vụ và API |
-| `apps/api/src/config/` | Cấu hình dùng chung, bao gồm Prisma Client |
-| `apps/api/prisma/schema.prisma` | Định nghĩa model và quan hệ dữ liệu |
-| `apps/api/prisma/migrations/` | Lịch sử thay đổi cấu trúc database |
-| `apps/api/prisma/seed.ts` | Khởi tạo dữ liệu phục vụ phát triển và kiểm thử |
-| `package.json` | Cấu hình workspace và script ở cấp repository |
-| `package-lock.json` | Khóa dependency cho các workspace |
-| `.github/workflows/ci.yml` | Quy trình kiểm tra tự động trên GitHub Actions |
+| Đường dẫn                       | Chức năng                                       |
+| ------------------------------- | ----------------------------------------------- |
+| `apps/web/src/pages/`           | Các trang giao diện                             |
+| `apps/web/src/components/`      | Thành phần giao diện dùng chung                 |
+| `apps/web/src/services/`        | Hàm giao tiếp với backend                       |
+| `apps/web/src/types/`           | Kiểu dữ liệu phía frontend                      |
+| `apps/api/src/modules/`         | Các module nghiệp vụ và API                     |
+| `apps/api/src/config/`          | Cấu hình dùng chung, bao gồm Prisma Client      |
+| `apps/api/prisma/schema.prisma` | Định nghĩa model và quan hệ dữ liệu             |
+| `apps/api/prisma/migrations/`   | Lịch sử thay đổi cấu trúc database              |
+| `apps/api/prisma/seed.ts`       | Khởi tạo dữ liệu phục vụ phát triển và kiểm thử |
+| `package.json`                  | Cấu hình workspace và script ở cấp repository   |
+| `package-lock.json`             | Khóa dependency cho các workspace               |
+| `.github/workflows/ci.yml`      | Quy trình kiểm tra tự động trên GitHub Actions  |
 
 ## 👥 4. Phân công công việc
 
 Nhóm gồm 6 thành viên. Mỗi thành viên chịu trách nhiệm chính cho một nhóm chức năng, bao gồm frontend và backend tương ứng. Các thành viên phối hợp với nhau khi cần thay đổi API, database hoặc tích hợp các luồng nghiệp vụ.
 
-| Thành viên | Phạm vi phụ trách chính |
-|---|---|
-| **M1 — Nhóm trưởng** | Điều phối nhóm, Git/PR, review code, tích hợp hệ thống và cấu hình chung. Frontend: `ProductManagementPage`, `ProductForm`, `ProductTable`, `ProductListPage`. Backend: `products/`, `catalog/`. Phối hợp thống nhất dữ liệu sản phẩm và biến thể. |
-| **M2 — Auth và Customer** | Frontend: đăng ký, đăng nhập, hồ sơ cá nhân, quản lý địa chỉ giao hàng và giao diện quản lý tài khoản Admin. Backend: `auth/`, `customer/`. Phụ trách JWT, RBAC và nhiều địa chỉ giao hàng. |
-| **M3 — Product Detail, Cart và Promotions** | Frontend: `ProductDetailPage`, `CartPage`, `PromotionManagementPage`. Backend: `cart/`, `promotions/`. Phụ trách chi tiết sản phẩm, chọn size/màu, giỏ hàng, quản lý khuyến mãi và kiểm tra điều kiện áp dụng mã giảm giá. |
-| **M4 — Checkout và Orders** | Frontend: `CheckoutPage`, `OrderHistoryPage`, `OrderManagementPage`. Backend: `orders/`. Phụ trách đặt hàng, lưu thông tin địa chỉ giao hàng tại thời điểm đặt đơn, lịch sử đơn hàng và quy trình quản lý trạng thái đơn hàng. |
-| **M5 — Inventory** | Frontend: giao diện quản lý kho, nhập/xuất và kiểm kê. Backend: `inventory/`. Phụ trách tồn kho theo biến thể size/màu, cập nhật số lượng và phối hợp kiểm soát tồn kho trong quá trình đặt hàng. |
-| **M6 — Payments và Dashboard** | Frontend: giao diện kết quả thanh toán và Dashboard. Backend: `payments/`, `dashboard/`. Phụ trách tích hợp **một cổng thanh toán sandbox** (VNPay, MoMo hoặc PayOS), xác minh kết quả thanh toán và thống kê đơn hàng, doanh thu. |
+| Thành viên                                  | Phạm vi phụ trách chính                                                                                                                                                                                                                            |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **M1 — Nhóm trưởng**                        | Điều phối nhóm, Git/PR, review code, tích hợp hệ thống và cấu hình chung. Frontend: `ProductManagementPage`, `ProductForm`, `ProductTable`, `ProductListPage`. Backend: `products/`, `catalog/`. Phối hợp thống nhất dữ liệu sản phẩm và biến thể. |
+| **M2 — Auth và Customer**                   | Frontend: đăng ký, đăng nhập, hồ sơ cá nhân, quản lý địa chỉ giao hàng và giao diện quản lý tài khoản Admin. Backend: `auth/`, `customer/`. Phụ trách JWT, RBAC và nhiều địa chỉ giao hàng.                                                        |
+| **M3 — Product Detail, Cart và Promotions** | Frontend: `ProductDetailPage`, `CartPage`, `PromotionManagementPage`. Backend: `cart/`, `promotions/`. Phụ trách chi tiết sản phẩm, chọn size/màu, giỏ hàng, quản lý khuyến mãi và kiểm tra điều kiện áp dụng mã giảm giá.                         |
+| **M4 — Checkout và Orders**                 | Frontend: `CheckoutPage`, `OrderHistoryPage`, `OrderManagementPage`. Backend: `orders/`. Phụ trách đặt hàng, lưu thông tin địa chỉ giao hàng tại thời điểm đặt đơn, lịch sử đơn hàng và quy trình quản lý trạng thái đơn hàng.                     |
+| **M5 — Inventory**                          | Frontend: giao diện quản lý kho, nhập/xuất và kiểm kê. Backend: `inventory/`. Phụ trách tồn kho theo biến thể size/màu, cập nhật số lượng và phối hợp kiểm soát tồn kho trong quá trình đặt hàng.                                                  |
+| **M6 — Payments và Dashboard**              | Frontend: giao diện kết quả thanh toán và Dashboard. Backend: `payments/`, `dashboard/`. Phụ trách tích hợp **một cổng thanh toán sandbox** (VNPay, MoMo hoặc PayOS), xác minh kết quả thanh toán và thống kê đơn hàng, doanh thu.                 |
 
 ### Nguyên tắc phối hợp
 
@@ -174,18 +174,18 @@ Nhóm gồm 6 thành viên. Mỗi thành viên chịu trách nhiệm chính cho 
 
 Các file dùng chung có thể ảnh hưởng đến nhiều chức năng, vì vậy cần thống nhất trước khi thay đổi.
 
-| File hoặc khu vực | Người điều phối | Quy định |
-|---|---|---|
-| `docker-compose.yml` | Người 1 | Thống nhất tên service, cổng và cấu hình database |
-| `apps/web/src/App.tsx` | Người 1 | Điều phối route và tích hợp trang |
-| `apps/api/src/app.ts` | Người 1 | Đăng ký middleware và route |
-| `apps/api/src/server.ts` | Người 1 | Quản lý khởi động server và cổng chạy |
-| `apps/api/prisma/schema.prisma` | Người 1 điều phối | Thống nhất model, trường dữ liệu và quan hệ |
-| `apps/api/prisma/migrations/` | Người được nhóm giao | Kiểm soát lịch sử thay đổi database |
-| `apps/api/prisma/seed.ts` | Người 1 điều phối | Đồng bộ dữ liệu khởi tạo với schema |
-| `package.json`, `package-lock.json` | Người 1 điều phối | Kiểm soát dependency và script dùng chung |
-| `.github/workflows/ci.yml` | Người 1 điều phối | Duy trì quy trình CI |
-| `.env.example` | Các thành viên phối hợp | Thống nhất tên biến môi trường, không chứa bí mật thật |
+| File hoặc khu vực                   | Người điều phối         | Quy định                                               |
+| ----------------------------------- | ----------------------- | ------------------------------------------------------ |
+| `docker-compose.yml`                | Người 1                 | Thống nhất tên service, cổng và cấu hình database      |
+| `apps/web/src/App.tsx`              | Người 1                 | Điều phối route và tích hợp trang                      |
+| `apps/api/src/app.ts`               | Người 1                 | Đăng ký middleware và route                            |
+| `apps/api/src/server.ts`            | Người 1                 | Quản lý khởi động server và cổng chạy                  |
+| `apps/api/prisma/schema.prisma`     | Người 1 điều phối       | Thống nhất model, trường dữ liệu và quan hệ            |
+| `apps/api/prisma/migrations/`       | Người được nhóm giao    | Kiểm soát lịch sử thay đổi database                    |
+| `apps/api/prisma/seed.ts`           | Người 1 điều phối       | Đồng bộ dữ liệu khởi tạo với schema                    |
+| `package.json`, `package-lock.json` | Người 1 điều phối       | Kiểm soát dependency và script dùng chung              |
+| `.github/workflows/ci.yml`          | Người 1 điều phối       | Duy trì quy trình CI                                   |
+| `.env.example`                      | Các thành viên phối hợp | Thống nhất tên biến môi trường, không chứa bí mật thật |
 
 ### Quy trình thay đổi database
 
@@ -202,15 +202,15 @@ Không tự ý thay đổi schema hoặc tạo migration xung đột với thàn
 
 API sử dụng tiền tố `/api`. Các đường dẫn dưới đây là định hướng tổ chức, cần được đối chiếu với router và code backend trước khi sử dụng trong frontend.
 
-| Chức năng | Đường dẫn định hướng | Ví dụ |
-|---|---|---|
-| Xác thực | `/api/auth` | `POST /api/auth/login` |
-| Sản phẩm | `/api/products` | `GET /api/products` |
-| Danh mục | `/api/catalog` | `GET /api/catalog` |
-| Giỏ hàng | `/api/cart` | `GET /api/cart` |
-| Khuyến mãi | `/api/promotions` | Kiểm tra và áp dụng mã giảm giá |
-| Đơn hàng | `/api/orders` | Tạo và truy vấn đơn hàng |
-| Khách hàng | `/api/customer` | Hồ sơ và địa chỉ giao hàng |
+| Chức năng  | Đường dẫn định hướng              | Ví dụ                                      |
+| ---------- | --------------------------------- | ------------------------------------------ |
+| Xác thực   | `/api/auth`                       | `POST /api/auth/login`                     |
+| Sản phẩm   | `/api/products`                   | `GET /api/products`                        |
+| Danh mục   | `/api/catalog`                    | `GET /api/catalog`                         |
+| Giỏ hàng   | `/api/cart`                       | `GET /api/cart`                            |
+| Khuyến mãi | `/api/promotions`                 | Kiểm tra và áp dụng mã giảm giá            |
+| Đơn hàng   | `/api/orders`                     | Tạo và truy vấn đơn hàng                   |
+| Khách hàng | `/api/customer`                   | Hồ sơ và địa chỉ giao hàng                 |
 | Thanh toán | Theo API contract được thống nhất | Tạo yêu cầu và xác nhận kết quả thanh toán |
 
 Không tự ý đổi URL, tên trường, kiểu dữ liệu hoặc định dạng response khi frontend và backend đang tích hợp.
@@ -458,13 +458,13 @@ Mở địa chỉ local do Vite thông báo trong terminal. Nếu frontend khôn
 
 ### 8.7. Các lệnh Docker thường dùng
 
-| Lệnh | Ý nghĩa |
-|---|---|
-| `docker compose up -d` | Khởi chạy dịch vụ ở chế độ nền |
-| `docker compose ps` | Xem trạng thái container |
-| `docker compose logs -f` | Theo dõi log |
-| `docker compose stop` | Dừng dịch vụ nhưng giữ container |
-| `docker compose down` | Dừng và xóa container của Compose |
+| Lệnh                     | Ý nghĩa                                        |
+| ------------------------ | ---------------------------------------------- |
+| `docker compose up -d`   | Khởi chạy dịch vụ ở chế độ nền                 |
+| `docker compose ps`      | Xem trạng thái container                       |
+| `docker compose logs -f` | Theo dõi log                                   |
+| `docker compose stop`    | Dừng dịch vụ nhưng giữ container               |
+| `docker compose down`    | Dừng và xóa container của Compose              |
 | `docker compose down -v` | Xóa cả volume; có thể làm mất dữ liệu database |
 
 **Cẩn thận với `docker compose down -v`:** chỉ sử dụng khi chủ động muốn xóa dữ liệu phát triển và đã xác nhận không cần giữ dữ liệu.
@@ -517,12 +517,12 @@ Một chức năng được xem là hoàn thành khi:
 
 ## 📅 11. Kế hoạch triển khai trong 4 tuần
 
-| Thời gian | Mục tiêu | Công việc chính |
-|---|---|---|
-| **Tuần 1 — Hoàn thiện nền tảng** | Thống nhất cấu trúc và hợp đồng API | Cấu hình môi trường; thống nhất database, API contract; kiểm tra seed; chốt phân công; hoàn thiện các chức năng nền tảng và quy trình Git/CI. |
-| **Tuần 2 — Phát triển chức năng** | Hoàn thiện các module chính | Phát triển xác thực, sản phẩm, danh mục, tồn kho, hồ sơ khách hàng, nhiều địa chỉ giao hàng, giỏ hàng và khuyến mãi. |
-| **Tuần 3 — Đặt hàng và tích hợp** | Hoàn thiện các luồng nghiệp vụ bắt buộc | Tích hợp checkout, tạo đơn hàng, kiểm tra tồn kho, áp dụng khuyến mãi, thanh toán trực tuyến sandbox và quản lý trạng thái đơn hàng. |
-| **Tuần 4 — Kiểm thử và hoàn thiện** | Ổn định hệ thống và chuẩn bị bảo vệ | Kiểm thử toàn bộ luồng mua hàng; sửa lỗi; kiểm tra quyền truy cập; kiểm thử hồi quy; xác nhận CI; hoàn thiện giao diện, README, báo cáo và demo. |
+| Thời gian                           | Mục tiêu                                | Công việc chính                                                                                                                                  |
+| ----------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Tuần 1 — Hoàn thiện nền tảng**    | Thống nhất cấu trúc và hợp đồng API     | Cấu hình môi trường; thống nhất database, API contract; kiểm tra seed; chốt phân công; hoàn thiện các chức năng nền tảng và quy trình Git/CI.    |
+| **Tuần 2 — Phát triển chức năng**   | Hoàn thiện các module chính             | Phát triển xác thực, sản phẩm, danh mục, tồn kho, hồ sơ khách hàng, nhiều địa chỉ giao hàng, giỏ hàng và khuyến mãi.                             |
+| **Tuần 3 — Đặt hàng và tích hợp**   | Hoàn thiện các luồng nghiệp vụ bắt buộc | Tích hợp checkout, tạo đơn hàng, kiểm tra tồn kho, áp dụng khuyến mãi, thanh toán trực tuyến sandbox và quản lý trạng thái đơn hàng.             |
+| **Tuần 4 — Kiểm thử và hoàn thiện** | Ổn định hệ thống và chuẩn bị bảo vệ     | Kiểm thử toàn bộ luồng mua hàng; sửa lỗi; kiểm tra quyền truy cập; kiểm thử hồi quy; xác nhận CI; hoàn thiện giao diện, README, báo cáo và demo. |
 
 ### Nguyên tắc triển khai trong 4 tuần
 
@@ -532,6 +532,7 @@ Một chức năng được xem là hoàn thành khi:
 - **Tuần 4:** ưu tiên sửa lỗi và hoàn thiện các chức năng bắt buộc; hạn chế bổ sung tính năng mới không cần thiết.
 
 Các chức năng khuyến mãi, thanh toán trực tuyến và nhiều địa chỉ giao hàng phải có thẻ Trello riêng, người phụ trách và tiêu chí nghiệm thu cụ thể. Không để các chức năng này bị bỏ sót khi tích hợp.
+
 ## 📜 12. Quy ước chung
 
 - Trao đổi trước khi sửa file dùng chung.

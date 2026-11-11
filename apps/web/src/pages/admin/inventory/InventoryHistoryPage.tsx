@@ -20,6 +20,7 @@ type HistoryItem = {
 
 type HistoryDocument = {
   id: string;
+  orderId?: string | null;
   code: string;
   type: string;
   reason: string | null;
@@ -36,7 +37,7 @@ const typeLabels: Record<string, string> = {
   COUNT: "Kiểm kê",
   ADJUSTMENT: "Điều chỉnh",
   ORDER_OUT: "Xuất theo đơn hàng",
-  ORDER_RETURN: "Khách trả hàng",
+  ORDER_RETURN: "Hoàn tồn đơn hàng / Khách trả",
 };
 
 async function request<T>(path: string): Promise<T> {
@@ -57,6 +58,7 @@ function formatDate(value: string | null) {
 
 export function InventoryHistoryPage() {
   const [documents, setDocuments] = useState<HistoryDocument[]>([]);
+  const [typeFilter, setTypeFilter] = useState("ALL");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -71,98 +73,198 @@ export function InventoryHistoryPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  const filteredDocuments =
+    typeFilter === "ALL"
+      ? documents
+      : documents.filter((d) => d.type === typeFilter);
+
+  const importDocsCount = documents.filter(
+    (d) => d.type === "IMPORT" || d.type === "ORDER_RETURN",
+  ).length;
+  const exportDocsCount = documents.filter(
+    (d) => d.type === "EXPORT" || d.type === "ORDER_OUT",
+  ).length;
+  const auditDocsCount = documents.filter(
+    (d) => d.type === "COUNT" || d.type === "ADJUSTMENT",
+  ).length;
+
   return (
     <section className="inventory-history">
-      <header className="inventory-heading">
+      <header className="inv-page-header">
         <div>
+          <p className="inv-eyebrow">INVENTORY MANAGEMENT · AUDIT LOG</p>
           <h2>Lịch sử kho</h2>
           <p>Các phiếu đã xác nhận và biến động tồn kho theo từng biến thể.</p>
         </div>
-        <span className="inventory-count">
+        <span className="inv-header-badge">
           {documents.length} phiếu hoàn tất
         </span>
       </header>
+
       <nav className="inventory-nav" aria-label="Điều hướng kho">
-        <Link to="/admin/inventory/check">Kiểm kê</Link>
+        <Link to="/admin/inventory/check">◈ Kiểm kê</Link>
+        <Link to="/admin/inventory/import">＋ Nhập kho</Link>
+        <Link to="/admin/inventory/export">－ Xuất kho</Link>
+        <Link to="/admin/inventory/adjustment">⇄ Điều chỉnh</Link>
         <Link to="/admin/inventory/history" className="active">
-          Lịch sử
+          ☰ Lịch sử
         </Link>
-        <Link to="/admin/inventory/adjustment">Điều chỉnh</Link>
-        <Link to="/admin/inventory/export">Xuất kho</Link>
-        <Link to="/admin/inventory/import">Nhập kho</Link>
       </nav>
+
+      <div className="inv-stat-grid">
+        <article className="inv-stat-card">
+          <span className="inv-stat-icon">☰</span>
+          <small>TỔNG CHỨNG TỪ</small>
+          <strong>{documents.length}</strong>
+          <em>Phiếu đã xác nhận</em>
+        </article>
+        <article className="inv-stat-card">
+          <span className="inv-stat-icon sage">＋</span>
+          <small>NHẬP / HOÀN ĐƠN</small>
+          <strong>{importDocsCount}</strong>
+          <em>Phiếu tăng tồn</em>
+        </article>
+        <article className="inv-stat-card">
+          <span className="inv-stat-icon rose">－</span>
+          <small>XUẤT / ĐƠN BÁN</small>
+          <strong>{exportDocsCount}</strong>
+          <em>Phiếu giảm tồn</em>
+        </article>
+        <article className="inv-stat-card">
+          <span className="inv-stat-icon sand">⇄</span>
+          <small>KIỂM KÊ & ĐIỀU CHỈNH</small>
+          <strong>{auditDocsCount}</strong>
+          <em>Biên bản đối soát</em>
+        </article>
+      </div>
+
       {error && (
         <p className="inventory-alert inventory-error" role="alert">
           {error}
         </p>
       )}
+
       {loading ? (
-        <p>Đang tải lịch sử...</p>
+        <div className="inventory-card">
+          <p className="inventory-empty">Đang tải lịch sử...</p>
+        </div>
       ) : documents.length === 0 ? (
-        <p className="inventory-empty">Chưa có phiếu kho nào được xác nhận.</p>
+        <div className="inventory-card">
+          <p className="inventory-empty">Chưa có phiếu kho nào được xác nhận.</p>
+        </div>
       ) : (
         <div className="inventory-card">
-          <table>
-            <thead>
-              <tr>
-                <th>Mã phiếu / loại</th>
-                <th>Ngày hoàn tất</th>
-                <th>Lý do</th>
-                <th>Người lập / xác nhận</th>
-                <th>Sản phẩm và biến động</th>
-              </tr>
-            </thead>
-            <tbody>
-              {documents.map((document) => (
-                <tr key={document.id}>
-                  <td>
-                    <strong>{document.code}</strong>
-                    <p className="mo-ta">
-                      {typeLabels[document.type] || document.type}
-                    </p>
-                  </td>
-                  <td>{formatDate(document.completedAt)}</td>
-                  <td>
-                    {document.reason || "—"}
-                    {document.note && <p className="mo-ta">{document.note}</p>}
-                  </td>
-                  <td>
-                    {document.createdBy.name || document.createdBy.email}
-                    <p className="mo-ta">
-                      Xác nhận:{" "}
-                      {document.confirmedBy?.name ||
-                        document.confirmedBy?.email ||
-                        "—"}
-                    </p>
-                  </td>
-                  <td>
-                    {document.items.map((item) => {
-                      const change =
-                        (item.stockAfter ?? 0) - (item.stockBefore ?? 0);
-                      return (
-                        <div key={item.id} style={{ padding: "4px 0" }}>
-                          <strong>{item.variant.product.name}</strong> · size{" "}
-                          {item.variant.size} · {item.variant.color}
-                          <p className="mo-ta">
-                            {item.stockBefore ?? "—"} → {item.stockAfter ?? "—"}
-                            {change > 0
-                              ? ` (+${change})`
-                              : change < 0
-                                ? ` (${change})`
-                                : " (không đổi)"}
-                            {item.unitCost !== null &&
-                              ` · Đơn giá: ${Number(item.unitCost).toLocaleString("vi-VN")} đ`}
-                          </p>
-                        </div>
-                      );
-                    })}
-                  </td>
+          <div className="inv-section-title">
+            <div>
+              <h3>Sổ cái chứng từ kho</h3>
+              <p>Hiển thị {filteredDocuments.length} phiếu hoàn tất</p>
+            </div>
+            <div style={{ minWidth: 210 }}>
+              <select
+                aria-label="Lọc theo loại phiếu"
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+              >
+                <option value="ALL">Tất cả loại phiếu ({documents.length})</option>
+                <option value="IMPORT">Nhập kho</option>
+                <option value="EXPORT">Xuất kho</option>
+                <option value="COUNT">Kiểm kê</option>
+                <option value="ADJUSTMENT">Điều chỉnh</option>
+                <option value="ORDER_OUT">Xuất theo đơn hàng</option>
+                <option value="ORDER_RETURN">Hoàn tồn đơn hàng</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="inventory-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>Mã phiếu / loại</th>
+                  <th>Ngày hoàn tất</th>
+                  <th>Lý do</th>
+                  <th>Người lập / xác nhận</th>
+                  <th>Sản phẩm và biến động</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filteredDocuments.map((document) => (
+                  <tr key={document.id}>
+                    <td>
+                      <strong>{document.code}</strong>
+                      <div>
+                        <span className={`inv-doc-badge ${document.type}`}>
+                          {typeLabels[document.type] || document.type}
+                        </span>
+                      </div>
+                    </td>
+                    <td>{formatDate(document.completedAt)}</td>
+                    <td>
+                      {document.reason || "—"}
+                      {document.orderId && (
+                        <p className="mo-ta">
+                          Mã đơn: #{document.orderId.slice(0, 8)}
+                        </p>
+                      )}
+                      {document.note && <p className="mo-ta">{document.note}</p>}
+                    </td>
+                    <td>
+                      <strong>
+                        {document.createdBy.name || document.createdBy.email}
+                      </strong>
+                      <p className="mo-ta">
+                        Xác nhận:{" "}
+                        {document.confirmedBy?.name ||
+                          document.confirmedBy?.email ||
+                          "—"}
+                      </p>
+                    </td>
+                    <td>
+                      {document.items.map((item) => {
+                        const change =
+                          (item.stockAfter ?? 0) - (item.stockBefore ?? 0);
+                        return (
+                          <div key={item.id} style={{ padding: "5px 0" }}>
+                            <strong>{item.variant.product.name}</strong> · size{" "}
+                            {item.variant.size} · {item.variant.color}
+                            <p className="mo-ta">
+                              <span className="inv-stock-pill">
+                                {item.stockBefore ?? "—"} →{" "}
+                                {item.stockAfter ?? "—"}
+                              </span>{" "}
+                              <span
+                                className={`inv-stock-pill ${
+                                  change > 0
+                                    ? "positive"
+                                    : change < 0
+                                      ? "negative"
+                                      : "neutral"
+                                }`}
+                              >
+                                {change > 0
+                                  ? `+${change}`
+                                  : change < 0
+                                    ? `${change}`
+                                    : "không đổi"}
+                              </span>
+                              {item.unitCost !== null &&
+                                ` · Đơn giá: ${Number(item.unitCost).toLocaleString("vi-VN")} đ`}
+                            </p>
+                          </div>
+                        );
+                      })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
+
+      <p className="inv-footnote">
+        Shoe Store Admin · Truy vết đầy đủ số lượng tồn trước và sau mỗi giao dịch.
+      </p>
     </section>
   );
 }

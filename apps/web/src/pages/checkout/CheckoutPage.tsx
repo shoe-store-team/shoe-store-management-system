@@ -1,211 +1,262 @@
 import { useEffect, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+
 import { cartService } from '../../services/cartService';
-import { customerService } from '../../services/customerService';
 import { orderService } from '../../services/orderService';
-import type { DonHangMoi } from '../../services/orderService';
-import { paymentService } from '../../services/paymentService';
-import { promotionService } from '../../services/promotionService';
 import { dinhDangTien } from '../../services/request';
+
 import type { GioHang } from '../../types/cart';
-import type { PaymentConfig, PaymentMethod } from '../../types/payment';
-import type { KetQuaMaGiam } from '../../types/promotion';
-import './checkout.css';
-
-// Thiết kế chỉ có 2 tỉnh và 2 quận. Mở rộng danh sách tại đây khi cần.
-const TINH = ['Hồ Chí Minh', 'Hà Nội'];
-const HUYEN = ['Quận 1', 'Quận 3'];
-
-type DiaChi = {
-  id: string;
-  recipientName: string;
-  phone: string;
-  addressLine: string;
-  ward?: string | null;
-  district?: string | null;
-  province?: string | null;
-  isDefault?: boolean;
-};
-type Form = { hoTen: string; sdt: string; diaChi: string; huyen: string; tinh: string };
-
-// customerService.getAddresses chưa có kiểu: chấp nhận cả [] lẫn { addresses: [] }
-const layDanhSach = (r: unknown): DiaChi[] =>
-  Array.isArray(r) ? r : ((r as { addresses?: DiaChi[] })?.addresses ?? []);
-
-const cacLuaChon = (ds: string[], giaTri: string) => (giaTri && !ds.includes(giaTri) ? [giaTri, ...ds] : ds);
+import type {
+  CreateOrderDto,
+  Order,
+  PaymentMethod,
+} from '../../types/order';
 
 export function CheckoutPage() {
-  const dieuHuong = useNavigate();
-  const { state } = useLocation();
-  const maGiam: string | undefined = state?.promotionCode; // CartPage truyền sang
+  const [gioHang, setGioHang] = useState<GioHang | null>(null);
 
-  const [gio, setGio] = useState<GioHang | null>(null);
-  const [cauHinh, setCauHinh] = useState<PaymentConfig | null>(null);
-  const [form, setForm] = useState<Form>({ hoTen: '', sdt: '', diaChi: '', huyen: HUYEN[0], tinh: TINH[0] });
-  const [giam, setGiam] = useState<KetQuaMaGiam | null>(null);
-  const [pttt, setPttt] = useState<PaymentMethod>('COD');
-  const [loi, setLoi] = useState('');
-  const [dangXuLy, setDangXuLy] = useState(false);
-  // Đơn đã tạo: nếu bước thanh toán lỗi, bấm "Đặt hàng" lại sẽ dùng CHÍNH đơn này (không tạo đơn thứ hai)
-  const [don, setDon] = useState<DonHangMoi | null>(null);
+  const [recipientName, setRecipientName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [shippingAddress, setShippingAddress] = useState('');
+  const [note, setNote] = useState('');
 
+  const [paymentMethod, setPaymentMethod] =
+    useState<PaymentMethod>('COD');
+
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [order, setOrder] = useState<Order | null>(null);
+
+  // Lay thong tin gio hang
   useEffect(() => {
-    let huy = false;
-    (async () => {
-      try {
-        const [g, raw, ch] = await Promise.all([
-          cartService.layGioHang(),
-          customerService.getAddresses().catch(() => []),
-          paymentService.layCauHinh().catch(() => null),
-        ]);
-        if (huy) return;
-        setGio(g);
-        setCauHinh(ch);
-        // Điền sẵn từ địa chỉ mặc định đã lưu (nếu có)
-        const ds = layDanhSach(raw);
-        const d = ds.find((x) => x.isDefault) ?? ds[0];
-        if (d)
-          setForm({
-            hoTen: d.recipientName,
-            sdt: d.phone,
-            diaChi: [d.addressLine, d.ward].filter(Boolean).join(', '),
-            huyen: d.district ?? HUYEN[0],
-            tinh: d.province ?? TINH[0],
-          });
-        if (maGiam) {
-          try { const k = await promotionService.kiemTraMa(maGiam); if (!huy) setGiam(k); }
-          catch { /* mã hết hiệu lực: bỏ qua, đặt hàng không kèm mã */ }
-        }
-      } catch (e) {
-        if (!huy) setLoi((e as Error).message);
-      }
-    })();
-    return () => { huy = true; };
-  }, [maGiam]);
+    cartService
+      .layGioHang()
+      .then(setGioHang)
+      .catch((e: Error) => setError(e.message))
+      .finally(() => setLoading(false));
+  }, []);
 
-  const dat = (k: keyof Form) => (e: { target: { value: string } }) => setForm((f) => ({ ...f, [k]: e.target.value }));
+  // Xu ly dat hang
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-  function kiemTra() {
-    if (form.hoTen.trim().length < 2) return 'Vui lòng nhập họ và tên.';
-    if (!/^[0-9+\s]{8,15}$/.test(form.sdt.trim())) return 'Số điện thoại không hợp lệ.';
-    if (form.diaChi.trim().length < 5) return 'Vui lòng nhập địa chỉ giao hàng.';
-    return '';
-  }
+    setError('');
 
-  async function datHang() {
-    const loiNhap = don ? '' : kiemTra();
-    if (loiNhap) { setLoi(loiNhap); return; }
-    setDangXuLy(true);
-    setLoi('');
-    let donHienTai = don;
-    try {
-      donHienTai =
-        don ??
-        (await orderService.taoDon({
-          recipientName: form.hoTen.trim(),
-          phone: form.sdt.trim(),
-          shippingAddress: [form.diaChi.trim(), form.huyen, form.tinh].join(', '),
-          promotionCode: giam?.code,
-        }));
-      setDon(donHienTai);
-      const tt = await paymentService.taoThanhToan({ orderId: donHienTai.id, method: pttt });
-      if (tt.paymentUrl) {
-        window.location.assign(tt.paymentUrl); // sang VNPay, giữ trạng thái "đang xử lý"
-        return;
-      }
-      dieuHuong(`/payment/result?reference=${tt.reference}`, { replace: true }); // COD / mock / đơn 0đ
-    } catch (e) {
-      const them = donHienTai ? ` (Đơn #${donHienTai.code} đã được tạo, bấm “Đặt hàng” để thử lại.)` : '';
-      setLoi((e as Error).message + them);
-      setDangXuLy(false);
+    if (!recipientName.trim()) {
+      setError('Vui long nhap ten nguoi nhan');
+      return;
     }
+
+    if (!/^0\d{9}$/.test(phone.trim())) {
+      setError('So dien thoai phai co 10 chu so va bat dau bang 0');
+      return;
+    }
+
+    if (!shippingAddress.trim()) {
+      setError('Vui long nhap dia chi giao hang');
+      return;
+    }
+
+    if (!gioHang || gioHang.items.length === 0) {
+      setError('Gio hang cua ban dang trong');
+      return;
+    }
+
+    if (gioHang.items.some((item) => !item.available)) {
+      setError('Gio hang co san pham khong du dieu kien dat hang');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+
+      const data: CreateOrderDto = {
+        recipientName: recipientName.trim(),
+        phone: phone.trim(),
+        shippingAddress: shippingAddress.trim(),
+        note: note.trim(),
+        paymentMethod,
+      };
+
+      const result = await orderService.taoDonHang(data);
+
+      setOrder(result);
+    } catch (e) {
+      setError((e as Error).message || 'Dat hang that bai');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="noi-dung">Dang tai gio hang...</div>;
   }
 
-  if (!gio) return <div className="co-page">{loi ? <p className="voucher-error">{loi}</p> : 'Đang tải...'}</div>;
+  if (order) {
+    return (
+      <div className="noi-dung">
+        <h2>Dat hang thanh cong!</h2>
 
-  const khongDatDuoc = gio.items.length === 0 || gio.items.some((i) => !i.available);
-  const giamGia = giam?.discountAmount ?? 0;
-  const tong = giam ? giam.total : gio.subtotal;
-  const trucTuyenDuoc = cauHinh?.configured ?? false;
-  const khoa = !!don; // đã tạo đơn: thông tin giao hàng được chốt
+        <p>Ma don hang: {order.id}</p>
+
+        <p>
+          Tong thanh toan:{' '}
+          {dinhDangTien(Number(order.totalAmount))}
+        </p>
+
+        <p>Trang thai: {order.status}</p>
+
+        <button onClick={() => (window.location.href = '/')}>
+          Tiep tuc mua sam
+        </button>
+      </div>
+    );
+  }
+
+  if (!gioHang || gioHang.items.length === 0) {
+    return (
+      <div className="noi-dung">
+        <h2>Gio hang dang trong</h2>
+        <p>Vui long them san pham vao gio hang truoc khi thanh toan.</p>
+      </div>
+    );
+  }
+
+  const tongTien = gioHang.subtotal;
 
   return (
-    <div className="co-page">
-      <Link to="/cart" className="back-link">← Quay lại giỏ hàng</Link>
-      <div className="checkout-head">
-        <p className="section-kicker">BƯỚC CUỐI CÙNG</p>
-        <h1>Thanh toán</h1>
+    <div className="noi-dung">
+      <h2>Thanh toan don hang</h2>
+
+      {error && (
+        <p style={{ color: 'red', marginBottom: 16 }}>
+          {error}
+        </p>
+      )}
+
+      <div style={{ marginBottom: 24 }}>
+        <h3>Thong tin san pham</h3>
+
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr>
+              <th align="left">San pham</th>
+              <th>Size</th>
+              <th>Mau</th>
+              <th>So luong</th>
+              <th>Don gia</th>
+              <th>Thanh tien</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {gioHang.items.map((item) => (
+              <tr key={item.id}>
+                <td>{item.productName}</td>
+                <td align="center">{item.size}</td>
+                <td align="center">{item.color}</td>
+                <td align="center">{item.quantity}</td>
+                <td align="center">
+                  {dinhDangTien(item.unitPrice)}
+                </td>
+                <td align="center">
+                  {dinhDangTien(item.lineTotal)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <h3 style={{ textAlign: 'right', marginTop: 20 }}>
+          Tong tien: {dinhDangTien(tongTien)}
+        </h3>
       </div>
 
-      <div className="checkout-grid">
-        <section className="form-panel">
-          <h2>Thông tin giao hàng</h2>
-          <div className="form-grid">
-            <label>Họ và tên
-              <input disabled={khoa} placeholder="Nguyễn Văn An" value={form.hoTen} onChange={dat('hoTen')} />
-            </label>
-            <label>Số điện thoại
-              <input disabled={khoa} placeholder="090 123 4567" value={form.sdt} onChange={dat('sdt')} />
-            </label>
-            <label className="full">Địa chỉ
-              <input disabled={khoa} placeholder="Số nhà, tên đường" value={form.diaChi} onChange={dat('diaChi')} />
-            </label>
-            <label>Tỉnh / Thành phố
-              <select disabled={khoa} value={form.tinh} onChange={dat('tinh')}>
-                {cacLuaChon(TINH, form.tinh).map((t) => <option key={t}>{t}</option>)}
-              </select>
-            </label>
-            <label>Quận / Huyện
-              <select disabled={khoa} value={form.huyen} onChange={dat('huyen')}>
-                {cacLuaChon(HUYEN, form.huyen).map((h) => <option key={h}>{h}</option>)}
-              </select>
-            </label>
-          </div>
+      <form onSubmit={handleSubmit}>
+        <h3>Thong tin nguoi nhan</h3>
 
-          <h2>Phương thức thanh toán</h2>
-          <label className="payment-choice">
-            <input type="radio" name="pay" checked={pttt === 'COD'} onChange={() => setPttt('COD')} />
-            <span>
-              <strong>Thanh toán khi nhận hàng</strong>
-              <small>Thanh toán tiền mặt cho đơn vị vận chuyển</small>
-            </span>
-          </label>
-          <label className="payment-choice">
-            <input type="radio" name="pay" disabled={!trucTuyenDuoc} checked={pttt === 'VNPAY'} onChange={() => setPttt('VNPAY')} />
-            <span>
-              <strong>Thanh toán trực tuyến</strong>
-              <small>Qua cổng thanh toán Sandbox{trucTuyenDuoc ? '' : ' (chưa khả dụng)'}</small>
-            </span>
-          </label>
-        </section>
+        <div style={{ marginBottom: 16 }}>
+          <label>Ho va ten nguoi nhan</label>
 
-        <aside className="summary checkout-summary">
-          <h2>Đơn hàng của bạn</h2>
-          {gio.items.map((i) => (
-            <div className="summary-product" key={i.id}>
-              {i.imageUrl ? <img src={i.imageUrl} alt={i.productName} /> : <div className="ph" />}
-              <span>
-                <strong>{i.productName}</strong>
-                <small>{i.color} · {i.size} · SL {i.quantity}</small>
-              </span>
-            </div>
-          ))}
-          <div className="sum-row"><span>Tạm tính</span><strong>{dinhDangTien(gio.subtotal)}</strong></div>
-          <div className="sum-row"><span>Phí vận chuyển</span><strong>Miễn phí</strong></div>
-          {giamGia > 0 && <div className="sum-row discount"><span>Giảm giá</span><strong>−{dinhDangTien(giamGia)}</strong></div>}
-          <div className="sum-total"><span>Tổng cộng</span><strong>{dinhDangTien(tong)}</strong></div>
+          <input
+            type="text"
+            value={recipientName}
+            onChange={(e) => setRecipientName(e.target.value)}
+            placeholder="Nhap ho va ten"
+            required
+            style={{ display: 'block', width: '100%', padding: 10 }}
+          />
+        </div>
 
-          {gio.items.length === 0 && !don && <p className="voucher-error">Giỏ hàng đang trống. <Link to="/cart">Về giỏ hàng</Link></p>}
-          {gio.items.some((i) => !i.available) && !don && (
-            <p className="voucher-error">Giỏ hàng có sản phẩm không còn khả dụng. <Link to="/cart">Quay lại giỏ hàng</Link> để xử lý.</p>
-          )}
-          {loi && <p className="voucher-error">{loi}</p>}
+        <div style={{ marginBottom: 16 }}>
+          <label>So dien thoai</label>
 
-          <button className="checkout-button" disabled={dangXuLy || (khongDatDuoc && !don)} onClick={datHang}>
-            {dangXuLy ? 'Đang xử lý...' : 'Đặt hàng'}
-          </button>
-        </aside>
-      </div>
+          <input
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="Nhap so dien thoai"
+            required
+            style={{ display: 'block', width: '100%', padding: 10 }}
+          />
+        </div>
+
+        <div style={{ marginBottom: 16 }}>
+          <label>Dia chi giao hang</label>
+
+          <textarea
+            value={shippingAddress}
+            onChange={(e) => setShippingAddress(e.target.value)}
+            placeholder="Nhap dia chi giao hang"
+            required
+            rows={3}
+            style={{ display: 'block', width: '100%', padding: 10 }}
+          />
+        </div>
+
+        <div style={{ marginBottom: 16 }}>
+          <label>Ghi chu</label>
+
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Ghi chu cho don hang (neu co)"
+            rows={2}
+            style={{ display: 'block', width: '100%', padding: 10 }}
+          />
+        </div>
+
+        <h3>Phuong thuc thanh toan</h3>
+
+        <div style={{ marginBottom: 20 }}>
+          <select
+            value={paymentMethod}
+            onChange={(e) =>
+              setPaymentMethod(e.target.value as PaymentMethod)
+            }
+            style={{ padding: 10, width: '100%' }}
+          >
+            <option value="COD">
+              Thanh toan khi nhan hang (COD)
+            </option>
+
+            <option value="VNPAY">Thanh toan qua VNPAY</option>
+
+            <option value="MOMO">Thanh toan qua MOMO</option>
+          </select>
+        </div>
+
+        <button
+          type="submit"
+          disabled={submitting}
+          style={{
+            padding: '12px 24px',
+            cursor: submitting ? 'not-allowed' : 'pointer',
+          }}
+        >
+          {submitting ? 'Dang dat hang...' : 'Xac nhan dat hang'}
+        </button>
+      </form>
     </div>
   );
 }

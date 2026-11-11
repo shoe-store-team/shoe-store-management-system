@@ -512,4 +512,210 @@ export class InventoryService {
     { isolationLevel: "Serializable" },
   );
 }
+  // 1. Trừ tồn kho nguyên tử khi tạo/xác nhận đơn hàng (M4 gọi)
+  async deductStockForOrder(data: {
+    orderId: string;
+    actorId: string;
+    items: { variantId: string; quantity: number }[];
+    reason?: string;
+  }) {
+    if (!data.items.length) {
+      throw new BadRequestException("Đơn hàng không có sản phẩm để trừ kho!");
+    }
+
+    return this.prisma.$transaction(
+      async (tx) => {
+        // Chống trừ tồn 2 lần cho cùng 1 đơn hàng
+        const existingOut = await tx.inventoryDocument.findFirst({
+          where: {
+            orderId: data.orderId,
+            type: InventoryDocumentType.ORDER_OUT,
+            status: InventoryDocumentStatus.COMPLETED,
+          },
+        });
+        if (existingOut) {
+          return {
+            alreadyProcessed: true,
+            document: existingOut,
+            message: "Đơn hàng này đã được trừ tồn kho trước đó.",
+          };
+        }
+
+        const itemSnapshots: {
+          variantId: string;
+          quantity: number;
+          stockBefore: number;
+          stockAfter: number;
+        }[] = [];
+
+        for (const item of data.items) {
+          if (!Number.isInteger(item.quantity) || item.quantity <= 0) {
+            throw new BadRequestException("Số lượng đặt phải là số nguyên lớn hơn 0!");
+          }
+
+          const currentVariant = await tx.productVariant.findUnique({
+            where: { id: item.variantId },
+          });
+          if (!currentVariant || !currentVariant.isActive) {
+            throw new NotFoundException(
+              `Biến thể ${item.variantId} không tồn tại hoặc ngừng bán!`,
+            );
+          }
+
+          // Kiểm tra và trừ tồn nguyên tử (Atomic check: stock >= quantity)
+          const updated = await tx.productVariant.updateMany({
+            where: {
+              id: item.variantId,
+              isActive: true,
+              stock: { gte: item.quantity },
+            },
+            data: {
+              stock: { decrement: item.quantity },
+            },
+          });
+
+          if (updated.count !== 1) {
+            throw new BadRequestException(
+              `Biến thể (size ${currentVariant.size} - ${currentVariant.color}) không đủ tồn kho (còn ${currentVariant.stock}, cần ${item.quantity})!`,
+            );
+          }
+
+          itemSnapshots.push({
+            variantId: item.variantId,
+            quantity: item.quantity,
+            stockBefore: currentVariant.stock,
+            stockAfter: currentVariant.stock - item.quantity,
+          });
+        }
+
+        // Ghi lịch sử phiếu xuất theo đơn hàng (ORDER_OUT)
+        const doc = await tx.inventoryDocument.create({
+          data: {
+            code: this.buildDocumentCode(InventoryDocumentType.ORDER_OUT),
+            type: InventoryDocumentType.ORDER_OUT,
+            status: InventoryDocumentStatus.COMPLETED,
+            orderId: data.orderId,
+            createdById: data.actorId,
+            confirmedById: data.actorId,
+            completedAt: new Date(),
+            reason: data.reason ?? `Xuất kho cho đơn hàng #${data.orderId.slice(0, 8)}`,
+            items: {
+              create: itemSnapshots,
+            },
+          },
+          include: { items: true },
+        });
+
+        return {
+          alreadyProcessed: false,
+          document: doc,
+          message: "Đã trừ tồn kho cho đơn hàng thành công.",
+        };
+      },
+      { isolationLevel: "Serializable" },
+    );
+  }
+
+  // 2. Hoàn tồn kho khi hủy đơn hoặc thanh toán thất bại/hết hạn (M4/M6 gọi)
+  async restoreStockForOrder(data: {
+    orderId: string;
+    actorId?: string;
+    reason?: string;
+  }) {
+    return this.prisma.$transaction(
+      async (tx) => {
+        // Kiểm tra xem đơn này đã từng trừ kho chưa
+        const outDoc = await tx.inventoryDocument.findFirst({
+          where: {
+            orderId: data.orderId,
+            type: InventoryDocumentType.ORDER_OUT,
+            status: InventoryDocumentStatus.COMPLETED,
+          },
+          include: { items: true },
+        });
+
+        if (!outDoc) {
+          return {
+            alreadyProcessed: false,
+            restored: false,
+            message: "Đơn hàng chưa từng trừ kho nên không cần hoàn tồn.",
+          };
+        }
+
+        // Chống hoàn tồn 2 lần (khi callback thanh toán hoặc lệnh hủy gọi lặp)
+        const existingReturn = await tx.inventoryDocument.findFirst({
+          where: {
+            orderId: data.orderId,
+            type: InventoryDocumentType.ORDER_RETURN,
+            status: InventoryDocumentStatus.COMPLETED,
+          },
+        });
+
+        if (existingReturn) {
+          return {
+            alreadyProcessed: true,
+            restored: false,
+            document: existingReturn,
+            message: "Tồn kho của đơn hàng này đã được hoàn trước đó.",
+          };
+        }
+
+        const itemSnapshots: {
+          variantId: string;
+          quantity: number;
+          stockBefore: number;
+          stockAfter: number;
+        }[] = [];
+
+        for (const item of outDoc.items) {
+          const currentVariant = await tx.productVariant.findUnique({
+            where: { id: item.variantId },
+          });
+          if (!currentVariant) continue;
+
+          await tx.productVariant.update({
+            where: { id: item.variantId },
+            data: { stock: { increment: item.quantity } },
+          });
+
+          itemSnapshots.push({
+            variantId: item.variantId,
+            quantity: item.quantity,
+            stockBefore: currentVariant.stock,
+            stockAfter: currentVariant.stock + item.quantity,
+          });
+        }
+
+        const operatorId = data.actorId ?? outDoc.createdById;
+
+        // Ghi lịch sử phiếu hoàn tồn (ORDER_RETURN)
+        const returnDoc = await tx.inventoryDocument.create({
+          data: {
+            code: this.buildDocumentCode(InventoryDocumentType.ORDER_RETURN),
+            type: InventoryDocumentType.ORDER_RETURN,
+            status: InventoryDocumentStatus.COMPLETED,
+            orderId: data.orderId,
+            createdById: operatorId,
+            confirmedById: operatorId,
+            completedAt: new Date(),
+            reason:
+              data.reason ??
+              `Hoàn tồn do hủy đơn / thanh toán thất bại #${data.orderId.slice(0, 8)}`,
+            items: {
+              create: itemSnapshots,
+            },
+          },
+          include: { items: true },
+        });
+
+        return {
+          alreadyProcessed: false,
+          restored: true,
+          document: returnDoc,
+          message: "Đã hoàn tồn kho cho đơn hàng thành công.",
+        };
+      },
+      { isolationLevel: "Serializable" },
+    );
+  }
 }
