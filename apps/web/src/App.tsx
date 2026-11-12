@@ -13,7 +13,10 @@ import { ForgotPasswordPage } from "./pages/auth/ForgotPasswordPage";
 import { ProductListPage } from "./pages/catalog/ProductListPage";
 import { ProductDetailPage } from "./pages/catalog/ProductDetailPage";
 import { CartPage } from "./pages/checkout/CartPage";
+import { CheckoutPage } from "./pages/checkout/CheckoutPage";
+import { PaymentResultPage } from "./pages/checkout/PaymentResultPage";
 import { ProfilePage } from "./pages/customer/ProfilePage";
+import { OrderHistoryPage } from "./pages/customer/OrderHistoryPage";
 
 // Admin
 import { Page as DashboardPage } from "./pages/admin/dashboard/DashboardPage";
@@ -38,6 +41,9 @@ export default function App() {
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/cart" element={<CartPage />} />
+          <Route path="/checkout" element={<CheckoutPage />} />
+          <Route path="/payment/result" element={<PaymentResultPage />} />
+          <Route path="/orders" element={<OrderHistoryPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/products/:id" element={<ProductDetailPage />} />
           <Route path="/product/:id" element={<ProductDetailPage />} />
