@@ -36,6 +36,8 @@ export function LoginPage() {
 
       if (user.role === "ADMIN") {
         navigate("/admin", { replace: true });
+      } else if (user.role === "WAREHOUSE_STAFF") {
+        navigate("/admin/inventory", { replace: true });
       } else {
         navigate(from?.startsWith("/") && !from.startsWith("//") ? from : "/", {
           replace: true,
