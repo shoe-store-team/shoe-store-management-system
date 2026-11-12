@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { authService } from "../../services/authService";
 
 export function RegisterPage() {
   const navigate = useNavigate();
@@ -20,20 +21,7 @@ export function RegisterPage() {
     setLoading(true);
 
     try {
-      const res = await fetch(
-        `${import.meta.env.VITE_API_URL || "http://localhost:3000/api"}/auth/register`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(form),
-        },
-      );
-
-      const result = await res.json();
-
-      if (!res.ok) {
-        throw new Error(result.message || "Đăng ký thất bại");
-      }
+      await authService.register(form);
 
       navigate("/login", {
         state: { message: "Đăng ký thành công. Vui lòng đăng nhập." },
