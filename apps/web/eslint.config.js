@@ -25,6 +25,6 @@ export default defineConfig([
       ...reactHooks.configs.recommended.rules,
       ...reactRefresh.configs.vite.rules,
     },
-    include: ["src"],
+    files: ["src"],
   },
 ]);
