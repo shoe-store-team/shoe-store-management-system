@@ -1,5 +1,5 @@
 ﻿import { Router } from 'express';
-
+import { authenticateToken } from '../../middlewares/auth.middleware';
 import {
   currentUserId,
   assertAdmin,
@@ -14,6 +14,7 @@ import {
 import * as orderService from './order.service';
 
 const router = Router();
+router.use(authenticateToken);
 
 // ==========================================
 // 1. TAO DON HANG

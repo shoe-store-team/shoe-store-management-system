@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import "./StockAdjustmentPage.css";
+import { authStore } from "../../../stores/authStore";
 
 const API_URL = "http://localhost:3000/api/inventory";
 
@@ -11,20 +12,27 @@ type Variant = {
   stock: number;
   product: { name: string };
 };
-type Operator = {
-  id: string;
-  name: string | null;
-  email: string;
-  role: string;
-};
+
 type Line = { variantId: string; quantity: number };
 type Document = { id: string; code: string };
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_URL}${path}`, init);
+  const token = authStore.getToken();
+
+  const response = await fetch(`${API_URL}${path}`, {
+    ...init,
+    headers: {
+      ...init?.headers,
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
   const result = await response.json();
-  if (!response.ok)
+
+  if (!response.ok) {
     throw new Error(result.message || "Yêu cầu không thành công.");
+  }
+
   return result;
 }
 
@@ -34,10 +42,10 @@ function variantLabel(variant: Variant) {
 
 export function StockAdjustmentPage() {
   const [variants, setVariants] = useState<Variant[]>([]);
-  const [operators, setOperators] = useState<Operator[]>([]);
+  // const [operators, setOperators] = useState<Operator[]>([]);
   const [lines, setLines] = useState<Line[]>([]);
   const [selectedVariantId, setSelectedVariantId] = useState("");
-  const [operatorId, setOperatorId] = useState("");
+  // const [operatorId, setOperatorId] = useState("");
   const [reason, setReason] = useState("");
   const [note, setNote] = useState("");
   const [draft, setDraft] = useState<Document | null>(null);
@@ -47,15 +55,10 @@ export function StockAdjustmentPage() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    Promise.all([
-      request<Variant[]>("/variants"),
-      request<Operator[]>("/operators"),
-    ])
-      .then(([availableVariants, availableOperators]) => {
+    request<Variant[]>("/variants")
+      .then((availableVariants) => {
         setVariants(availableVariants);
-        setOperators(availableOperators);
         setSelectedVariantId(availableVariants[0]?.id ?? "");
-        setOperatorId(availableOperators[0]?.id ?? "");
       })
       .catch((cause: unknown) =>
         setError(
@@ -78,8 +81,8 @@ export function StockAdjustmentPage() {
     event.preventDefault();
     setError("");
     setMessage("");
-    if (!operatorId || lines.length === 0) {
-      setError("Hãy chọn người lập phiếu và thêm ít nhất một biến thể.");
+    if (lines.length === 0) {
+      setError("Hãy thêm ít nhất một biến thể.");
       return;
     }
 
@@ -92,7 +95,6 @@ export function StockAdjustmentPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             type: "ADJUSTMENT",
-            createdById: operatorId,
             reason,
             note,
             items: lines,
@@ -112,7 +114,7 @@ export function StockAdjustmentPage() {
       await request(`/documents/${document.id}/confirm`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ confirmedById: operatorId }),
+        body: JSON.stringify({}),
       });
       setDraft(null);
       setLines([]);
@@ -179,10 +181,15 @@ export function StockAdjustmentPage() {
         <div>
           <p className="inv-eyebrow">INVENTORY MANAGEMENT · ADJUSTMENT</p>
           <h2>Điều chỉnh tồn kho</h2>
-          <p>Điều chỉnh tồn hiện tại về số lượng mới và lưu lại chứng từ đối soát.</p>
+          <p>
+            Điều chỉnh tồn hiện tại về số lượng mới và lưu lại chứng từ đối
+            soát.
+          </p>
         </div>
         <span className={`inv-header-badge ${draft ? "is-draft" : ""}`}>
-          {draft ? `● Phiếu nháp: ${draft.code}` : "Cập nhật trực tiếp theo biến thể"}
+          {draft
+            ? `● Phiếu nháp: ${draft.code}`
+            : "Cập nhật trực tiếp theo biến thể"}
         </span>
       </header>
 
@@ -243,26 +250,14 @@ export function StockAdjustmentPage() {
           <div className="inv-section-title">
             <div>
               <h3>Thông tin phiếu điều chỉnh</h3>
-              <p>Ghi rõ nguyên nhân điều chỉnh (hàng hư hỏng, thất thoát, cân bằng kho...).</p>
+              <p>
+                Ghi rõ nguyên nhân điều chỉnh (hàng hư hỏng, thất thoát, cân
+                bằng kho...).
+              </p>
             </div>
           </div>
 
           <div className="adjustment-form">
-            <label>
-              Người lập / xác nhận
-              <select
-                value={operatorId}
-                onChange={(event) => setOperatorId(event.target.value)}
-                required
-              >
-                <option value="">Chọn nhân viên</option>
-                {operators.map((operator) => (
-                  <option key={operator.id} value={operator.id}>
-                    {operator.name || operator.email} ({operator.role})
-                  </option>
-                ))}
-              </select>
-            </label>
             <label>
               Lý do điều chỉnh
               <input
@@ -282,12 +277,6 @@ export function StockAdjustmentPage() {
               />
             </label>
           </div>
-
-          {operators.length === 0 && (
-            <p className="thong-bao-loi">
-              Chưa có tài khoản ADMIN hoặc WAREHOUSE_STAFF đang hoạt động.
-            </p>
-          )}
 
           <div className="inv-picker-box">
             <label>
@@ -337,7 +326,9 @@ export function StockAdjustmentPage() {
                         <div className="inv-variant-cell">
                           <strong>{variant.product.name}</strong>
                           <span className="inv-variant-meta">
-                            <span className="inv-chip">Size {variant.size}</span>
+                            <span className="inv-chip">
+                              Size {variant.size}
+                            </span>
                             <span className="inv-chip">{variant.color}</span>
                           </span>
                         </div>
@@ -402,7 +393,8 @@ export function StockAdjustmentPage() {
                 {lines.length === 0 && (
                   <tr>
                     <td className="khong-co-du-lieu" colSpan={5}>
-                      Chưa có sản phẩm trong phiếu. Hãy chọn biến thể phía trên và bấm "Thêm sản phẩm".
+                      Chưa có sản phẩm trong phiếu. Hãy chọn biến thể phía trên
+                      và bấm "Thêm sản phẩm".
                     </td>
                   </tr>
                 )}
@@ -411,10 +403,7 @@ export function StockAdjustmentPage() {
           </div>
 
           <div className="inv-footer-bar">
-            <button
-              type="submit"
-              disabled={saving || !operatorId || !lines.length}
-            >
+            <button type="submit" disabled={saving || !lines.length}>
               {saving
                 ? "Đang xử lý..."
                 : draft

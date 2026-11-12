@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import type { ReactNode } from "react";
 import "./index.css";
 
 import { CustomerLayout } from "./layouts/CustomerLayout";
@@ -29,6 +29,15 @@ import { OrderManagementPage } from "./pages/admin/orders/OrderManagementPage";
 import { ProductManagementPage } from "./pages/admin/products/ProductManagementPage";
 import { PromotionManagementPage } from "./pages/admin/promotions/PromotionManagementPage";
 import { Page as UserManagementPage } from "./pages/admin/users/UserManagementPage";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  Outlet,
+} from "react-router-dom";
+import { useAuth } from "./stores/authStore";
+import { InventoryHomePage } from "./pages/admin/inventory/InventoryHomePage";
 
 export default function App() {
   return (
@@ -40,37 +49,166 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/register" element={<RegisterPage />} />
-          <Route path="/cart" element={<CartPage />} />
-          <Route path="/checkout" element={<CheckoutPage />} />
-          <Route path="/payment/result" element={<PaymentResultPage />} />
-          <Route path="/orders" element={<OrderHistoryPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
+          <Route element={<RequireAuth />}>
+            <Route path="/cart" element={<CartPage />} />
+            <Route path="/checkout" element={<CheckoutPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/orders" element={<OrderHistoryPage />} />
+          </Route>
+
+          <Route
+            path="/payment/result"
+            element={<PaymentResultPage />}
+          />
           <Route path="/products/:id" element={<ProductDetailPage />} />
           <Route path="/product/:id" element={<ProductDetailPage />} />
         </Route>
 
-        {/* Admin routes */}
-        <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<Navigate to="dashboard" replace />} />
+        
+{/* Admin routes */}
+<Route path="/admin" element={<AdminLayout />}>
+  <Route
+    index
+    element={
+      <RequireRole allowedRoles={["ADMIN"]}>
+        <Navigate to="dashboard" replace />
+      </RequireRole>
+    }
+  />
 
-          <Route path="dashboard" element={<DashboardPage />} />
-          <Route path="products" element={<ProductManagementPage />} />
-          <Route path="orders" element={<OrderManagementPage />} />
+  <Route
+    path="dashboard"
+    element={
+      <RequireRole allowedRoles={["ADMIN"]}>
+        <DashboardPage />
+      </RequireRole>
+    }
+  />
 
-          <Route path="inventory" element={<InventoryCheckPage />} />
-          <Route path="inventory/check" element={<InventoryCheckPage />} />
-          <Route path="inventory/history" element={<InventoryHistoryPage />} />
-          <Route path="inventory/adjustment" element={<StockAdjustmentPage />} />
-          <Route path="inventory/import" element={<StockImportPage />} />
-          <Route path="inventory/export" element={<StockExportPage />} />
+  <Route
+    path="products"
+    element={
+      <RequireRole allowedRoles={["ADMIN"]}>
+        <ProductManagementPage />
+      </RequireRole>
+    }
+  />
 
-          <Route path="promotions" element={<PromotionManagementPage />} />
-          <Route path="users" element={<UserManagementPage />} />
-        </Route>
+  <Route
+    path="orders"
+    element={
+      <RequireRole allowedRoles={["ADMIN"]}>
+        <OrderManagementPage />
+      </RequireRole>
+    }
+  />
+
+  <Route
+    path="inventory"
+    element={
+      <RequireRole allowedRoles={["ADMIN", "WAREHOUSE_STAFF"]}>
+        <InventoryHomePage />
+      </RequireRole>
+    }
+  />
+
+  <Route
+    path="inventory/check"
+    element={
+      <RequireRole allowedRoles={["ADMIN", "WAREHOUSE_STAFF"]}>
+        <InventoryCheckPage />
+      </RequireRole>
+    }
+  />
+
+  <Route
+    path="inventory/history"
+    element={
+      <RequireRole allowedRoles={["ADMIN", "WAREHOUSE_STAFF"]}>
+        <InventoryHistoryPage />
+      </RequireRole>
+    }
+  />
+
+  <Route
+    path="inventory/adjustment"
+    element={
+      <RequireRole allowedRoles={["ADMIN", "WAREHOUSE_STAFF"]}>
+        <StockAdjustmentPage />
+      </RequireRole>
+    }
+  />
+
+  <Route
+    path="inventory/import"
+    element={
+      <RequireRole allowedRoles={["ADMIN", "WAREHOUSE_STAFF"]}>
+        <StockImportPage />
+      </RequireRole>
+    }
+  />
+
+  <Route
+    path="inventory/export"
+    element={
+      <RequireRole allowedRoles={["ADMIN", "WAREHOUSE_STAFF"]}>
+        <StockExportPage />
+      </RequireRole>
+    }
+  />
+
+  <Route
+    path="promotions"
+    element={
+      <RequireRole allowedRoles={["ADMIN"]}>
+        <PromotionManagementPage />
+      </RequireRole>
+    }
+  />
+
+  <Route
+    path="users"
+    element={
+      <RequireRole allowedRoles={["ADMIN"]}>
+        <UserManagementPage />
+      </RequireRole>
+    }
+  />
+</Route>
+
 
         {/* Unknown routes */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );
+}
+function RequireAuth() {
+  const { isAuthenticated } = useAuth();
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <Outlet />;
+}
+function RequireRole({
+  allowedRoles,
+  children,
+}: {
+  allowedRoles: string[];
+  children: ReactNode;
+}) {
+  const { user } = useAuth();
+
+  if (!allowedRoles.includes(user?.role ?? "")) {
+    return (
+      <Navigate
+        to={user?.role === "WAREHOUSE_STAFF" ? "/admin/inventory" : "/"}
+        replace
+      />
+    );
+  }
+
+  return <>{children}</>;
 }
