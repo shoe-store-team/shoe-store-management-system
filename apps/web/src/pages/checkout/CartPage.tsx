@@ -1,24 +1,25 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { cartService } from '../../services/cartService';
-import { promotionService } from '../../services/promotionService';
-import { dinhDangTien } from '../../services/request';
-import type { GioHang } from '../../types/cart';
-import type { KetQuaMaGiam } from '../../types/promotion';
-import './CartPage.css';
+import { useCallback, useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { cartService } from "../../services/cartService";
+import { promotionService } from "../../services/promotionService";
+import { dinhDangTien } from "../../services/request";
+import type { GioHang } from "../../types/cart";
+import type { KetQuaMaGiam } from "../../types/promotion";
+import "./CartPage.css";
 
 export function CartPage() {
+  const dieuHuong = useNavigate();
   const [gio, setGio] = useState<GioHang | null>(null);
-  const [loi, setLoi] = useState('');
-  const [ma, setMa] = useState('');
+  const [loi, setLoi] = useState("");
+  const [ma, setMa] = useState("");
   const [giam, setGiam] = useState<KetQuaMaGiam | null>(null);
-  const [loiMa, setLoiMa] = useState('');
+  const [loiMa, setLoiMa] = useState("");
 
   // Tính lại giảm giá mỗi khi giỏ đổi; mã không còn hợp lệ thì gỡ ra
   const kiemTraLai = useCallback(async (code: string) => {
     try {
       setGiam(await promotionService.kiemTraMa(code));
-      setLoiMa('');
+      setLoiMa("");
     } catch (e) {
       setGiam(null);
       setLoiMa((e as Error).message);
@@ -28,8 +29,9 @@ export function CartPage() {
   const capNhatGio = useCallback(
     async (thaoTac: () => Promise<GioHang>) => {
       try {
-        setLoi('');
-        setGio(await thaoTac());
+        setLoi("");
+        const gioMoi = await thaoTac();
+        setGio(gioMoi);
         if (giam) await kiemTraLai(giam.code);
       } catch (e) {
         setLoi((e as Error).message);
@@ -39,30 +41,38 @@ export function CartPage() {
   );
 
   useEffect(() => {
-    cartService.layGioHang().then(setGio).catch((e: Error) => setLoi(e.message));
+    cartService
+      .layGioHang()
+      .then(setGio)
+      .catch((e: Error) => setLoi(e.message));
   }, []);
 
   if (!gio) {
     return (
       <div className="gh-wrap">
-        {loi ? <div className="gh-alert gh-alert--loi">{loi}</div> : <div className="gh-dang-tai">Đang tải giỏ hàng...</div>}
+        {loi ? (
+          <div className="gh-alert gh-alert--loi">{loi}</div>
+        ) : (
+          <div className="gh-dang-tai">Đang tải giỏ hàng...</div>
+        )}
       </div>
     );
   }
 
-  const khongThanhToanDuoc = gio.items.length === 0 || gio.items.some((i) => !i.available);
-  const coSanPhamLoi = gio.items.some((i) => !i.available);
+  const khongThanhToanDuoc =
+    gio.items.length === 0 || gio.items.some((i) => !i.available);
   const tongCuoi = giam ? giam.total : gio.subtotal;
   const boMa = () => {
     setGiam(null);
-    setLoiMa('');
-    setMa('');
+    setLoiMa("");
+    setMa("");
   };
 
   return (
     <div className="gh-wrap">
       <h1 className="gh-tieu-de">
-        Giỏ hàng <span className="gh-tieu-de__dem">({gio.itemCount} sản phẩm)</span>
+        Giỏ hàng{" "}
+        <span className="gh-tieu-de__dem">({gio.itemCount} sản phẩm)</span>
       </h1>
 
       {loi && (
@@ -82,9 +92,16 @@ export function CartPage() {
         <div className="gh-grid">
           <ul className="gh-danh-sach">
             {gio.items.map((i) => (
-              <li key={i.id} className={`gh-item${i.available ? '' : ' is-loi'}`}>
+              <li
+                key={i.id}
+                className={`gh-item${i.available ? "" : " is-loi"}`}
+              >
                 <Link to={`/product/${i.productId}`} className="gh-item__anh">
-                  {i.imageUrl ? <img src={i.imageUrl} alt={i.productName} /> : <span>Chưa có ảnh</span>}
+                  {i.imageUrl ? (
+                    <img src={i.imageUrl} alt={i.productName} />
+                  ) : (
+                    <span>Chưa có ảnh</span>
+                  )}
                 </Link>
 
                 <div className="gh-item__thong-tin">
@@ -94,11 +111,13 @@ export function CartPage() {
                   <div className="gh-item__phan-loai">
                     Màu: {i.color} · Size: {i.size}
                   </div>
-                  <div className="gh-item__don-gia">{dinhDangTien(i.unitPrice)}</div>
+                  <div className="gh-item__don-gia">
+                    {dinhDangTien(i.unitPrice)}
+                  </div>
                   {!i.available && (
                     <div className="gh-item__canh-bao" role="alert">
-                      {i.unavailableReason === 'INACTIVE'
-                        ? 'Sản phẩm đã ngừng bán, vui lòng xóa khỏi giỏ hàng'
+                      {i.unavailableReason === "INACTIVE"
+                        ? "Sản phẩm đã ngừng bán, vui lòng xóa khỏi giỏ hàng"
                         : `Không đủ tồn kho (còn ${i.stock})`}
                     </div>
                   )}
@@ -110,7 +129,11 @@ export function CartPage() {
                       type="button"
                       aria-label="Giảm số lượng"
                       disabled={i.quantity <= 1}
-                      onClick={() => capNhatGio(() => cartService.capNhatSoLuong(i.id, i.quantity - 1))}
+                      onClick={() =>
+                        capNhatGio(() =>
+                          cartService.capNhatSoLuong(i.id, i.quantity - 1),
+                        )
+                      }
                     >
                       −
                     </button>
@@ -119,13 +142,23 @@ export function CartPage() {
                       type="button"
                       aria-label="Tăng số lượng"
                       disabled={i.quantity >= i.stock}
-                      onClick={() => capNhatGio(() => cartService.capNhatSoLuong(i.id, i.quantity + 1))}
+                      onClick={() =>
+                        capNhatGio(() =>
+                          cartService.capNhatSoLuong(i.id, i.quantity + 1),
+                        )
+                      }
                     >
                       +
                     </button>
                   </div>
-                  <div className="gh-item__thanh-tien">{dinhDangTien(i.lineTotal)}</div>
-                  <button type="button" className="gh-xoa" onClick={() => capNhatGio(() => cartService.xoa(i.id))}>
+                  <div className="gh-item__thanh-tien">
+                    {dinhDangTien(i.lineTotal)}
+                  </div>
+                  <button
+                    type="button"
+                    className="gh-xoa"
+                    onClick={() => capNhatGio(() => cartService.xoa(i.id))}
+                  >
                     Xóa
                   </button>
                 </div>
@@ -145,7 +178,7 @@ export function CartPage() {
                   value={ma}
                   onChange={(e) => setMa(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' && ma.trim()) kiemTraLai(ma);
+                    if (e.key === "Enter" && ma.trim()) kiemTraLai(ma);
                   }}
                 />
                 {giam ? (
@@ -153,38 +186,42 @@ export function CartPage() {
                     Bỏ mã
                   </button>
                 ) : (
-                  <button type="button" className="gh-nut gh-nut--chinh" disabled={!ma.trim()} onClick={() => kiemTraLai(ma)}>
+                  <button
+                    type="button"
+                    className="gh-nut gh-nut--chinh"
+                    disabled={!ma.trim()}
+                    onClick={() => kiemTraLai(ma)}
+                  >
                     Áp dụng
                   </button>
                 )}
               </div>
-              {giam && <div className="gh-ma__ok">Đã áp dụng mã {giam.code}</div>}
+              {giam && (
+                <div className="gh-ma__ok">Đã áp dụng mã {giam.code}</div>
+              )}
               {loiMa && <div className="gh-ma__loi">{loiMa}</div>}
             </div>
 
-            <dl className="gh-dong-tien">
-              <div>
-                <dt>Tạm tính (trước giảm giá)</dt>
-                <dd>{dinhDangTien(gio.subtotal)}</dd>
-              </div>
+            <div style={{ marginTop: 16, textAlign: "right" }}>
+              <p>Tạm tính (trước giảm giá): {dinhDangTien(gio.subtotal)}</p>
               {giam && (
-                <div className="gh-dong-tien__giam">
-                  <dt>Giảm giá ({giam.code})</dt>
-                  <dd>−{dinhDangTien(giam.discountAmount)}</dd>
-                </div>
+                <p style={{ color: "#15803d" }}>
+                  Mã {giam.code}: −{dinhDangTien(giam.discountAmount)}
+                </p>
               )}
-              <div className="gh-dong-tien__tong">
-                <dt>Tổng dự kiến</dt>
-                <dd>{dinhDangTien(tongCuoi)}</dd>
-              </div>
-            </dl>
-            <p className="gh-ghi-chu">Số tiền cuối cùng sẽ được hệ thống tính lại khi đặt hàng.</p>
-
-            {/* Người 4 nối trang thanh toán ở đây (gửi kèm mã giảm giá đang áp dụng) */}
-            <button type="button" className="gh-nut gh-nut--chinh gh-nut--lon" disabled={khongThanhToanDuoc}>
-              Tiến hành thanh toán
-            </button>
-            {coSanPhamLoi && <p className="gh-nhac">Vui lòng xóa hoặc điều chỉnh sản phẩm có cảnh báo để thanh toán.</p>}
+              <h3>Tổng dự kiến: {dinhDangTien(tongCuoi)}</h3>
+              <button
+                type="button"
+                disabled={khongThanhToanDuoc}
+                onClick={() =>
+                  dieuHuong("/checkout", {
+                    state: { promotionCode: giam?.code },
+                  })
+                }
+              >
+                Tiến hành thanh toán
+              </button>
+            </div>
           </aside>
         </div>
       )}
