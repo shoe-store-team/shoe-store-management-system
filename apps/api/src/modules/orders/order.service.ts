@@ -1,20 +1,38 @@
-import {
-  prisma,
-} from '../../config/prisma';
-
-import {
-  HttpError,
-} from '../common/http';
+import { prisma } from '../../config/prisma';
+import { HttpError } from '../common/http';
 
 import {
   Prisma,
   PaymentMethod,
   PaymentStatus,
   OrderStatus,
+  InventoryDocumentType,
+  InventoryDocumentStatus,
+  DiscountType,
 } from '@prisma/client';
 
 // ==========================================
-// 1. TAO DON HANG
+// HÀM HỖ TRỢ
+// ==========================================
+
+function taoMaPhieuKho(type: InventoryDocumentType): string {
+  const stamp = Date.now();
+  const random = Math.random()
+    .toString(36)
+    .slice(2, 9)
+    .toUpperCase();
+
+  return `${type}-${stamp}-${random}`;
+}
+
+function kiemTraSoDienThoai(phone: string): boolean {
+  return /^(0|\+84)[0-9]{9,10}$/.test(
+    phone.replace(/\s/g, ''),
+  );
+}
+
+// ==========================================
+// 1. TẠO ĐƠN HÀNG
 // ==========================================
 
 export async function createOrder(
@@ -26,29 +44,59 @@ export async function createOrder(
     addressId?: string;
     note?: string;
     paymentMethod: PaymentMethod;
+    promotionCode?: string;
+    voucherCode?: string;
   },
 ) {
-  const {
-    recipientName,
-    phone,
-    shippingAddress,
-    addressId,
-    note,
-    paymentMethod,
-  } = data;
+  const recipientName = String(
+    data.recipientName ?? '',
+  ).trim();
 
+  const phone = String(data.phone ?? '').trim();
+
+  const shippingAddress = String(
+    data.shippingAddress ?? '',
+  ).trim();
+
+  const addressId = data.addressId;
+  const note = data.note?.trim();
+
+  const paymentMethod = data.paymentMethod;
+
+  const promotionCode = String(
+    data.promotionCode ?? data.voucherCode ?? '',
+  )
+    .trim()
+    .toUpperCase();
+
+  // Kiểm tra thông tin giao hàng
   if (!recipientName || !phone || !shippingAddress) {
-    throw new HttpError(400, 'Thong tin giao hang khong day du');
+    throw new HttpError(
+      400,
+      'Thong tin giao hang khong day du',
+    );
+  }
+
+  if (!kiemTraSoDienThoai(phone)) {
+    throw new HttpError(
+      400,
+      'So dien thoai khong hop le',
+    );
   }
 
   if (!Object.values(PaymentMethod).includes(paymentMethod)) {
-    throw new HttpError(400, 'Phuong thuc thanh toan khong hop le');
+    throw new HttpError(
+      400,
+      'Phuong thuc thanh toan khong hop le',
+    );
   }
 
   return prisma.$transaction(
     async (tx) => {
+      // --------------------------------------
+      // 1. LẤY GIỎ HÀNG
+      // --------------------------------------
 
-      // Lay gio hang
       const cartItems = await tx.cartItem.findMany({
         where: { userId },
         include: {
@@ -64,7 +112,10 @@ export async function createOrder(
         throw new HttpError(400, 'Gio hang dang trong');
       }
 
-      // Kiem tra dia chi
+      // --------------------------------------
+      // 2. KIỂM TRA ĐỊA CHỈ
+      // --------------------------------------
+
       if (addressId) {
         const address = await tx.address.findFirst({
           where: {
@@ -74,30 +125,75 @@ export async function createOrder(
         });
 
         if (!address) {
-          throw new HttpError(404, 'Dia chi khong ton tai');
+          throw new HttpError(
+            404,
+            'Dia chi giao hang khong ton tai',
+          );
         }
       }
 
+      // --------------------------------------
+      // 3. KIỂM TRA SẢN PHẨM VÀ TÍNH TIỀN
+      // --------------------------------------
+
       let subtotal = new Prisma.Decimal(0);
 
-      const orderItems = [];
+      const orderItems: {
+        variantId: string;
+        productName: string;
+        size: number;
+        color: string;
+        quantity: number;
+        price: Prisma.Decimal;
+      }[] = [];
 
-      // Kiem tra san pham va tinh tien
       for (const item of cartItems) {
         const variant = item.variant;
         const product = variant.product;
 
-        if (!variant.isActive || !product.isActive) {
-          throw new HttpError(400, 'San pham khong con kinh doanh');
+        if (
+          !Number.isInteger(item.quantity) ||
+          item.quantity <= 0
+        ) {
+          throw new HttpError(
+            400,
+            'So luong san pham khong hop le',
+          );
         }
 
-        const price =
-          variant.priceOverride ?? product.basePrice;
+        // Kiểm tra biến thể
+        if (!variant.isActive) {
+          throw new HttpError(
+            400,
+            `Bien the san pham ${product.name} khong con hoat dong`,
+          );
+        }
+
+        // Kiểm tra sản phẩm
+        if (!product.isActive) {
+          throw new HttpError(
+            400,
+            `San pham ${product.name} khong con kinh doanh`,
+          );
+        }
+
+        // Backend lấy giá từ Database
+        const price = new Prisma.Decimal(
+          variant.priceOverride ?? product.basePrice,
+        );
+
+        if (price.lessThanOrEqualTo(0)) {
+          throw new HttpError(
+            400,
+            'Gia san pham khong hop le',
+          );
+        }
 
         subtotal = subtotal.add(
           price.mul(item.quantity),
         );
 
+        // Lưu snapshot sản phẩm
         orderItems.push({
           variantId: variant.id,
           productName: product.name,
@@ -108,15 +204,163 @@ export async function createOrder(
         });
       }
 
-      // Tru ton kho an toan
+      // --------------------------------------
+      // 4. KIỂM TRA VÀ TÍNH VOUCHER
+      // --------------------------------------
+
+      let discountAmount = new Prisma.Decimal(0);
+      let promotionId: string | null = null;
+
+      if (promotionCode) {
+        const promotion = await tx.promotion.findUnique({
+          where: {
+            code: promotionCode,
+          },
+        });
+
+        if (!promotion) {
+          throw new HttpError(
+            400,
+            'Ma giam gia khong ton tai',
+          );
+        }
+
+        const now = new Date();
+
+        if (!promotion.isActive) {
+          throw new HttpError(
+            400,
+            'Ma giam gia khong con hoat dong',
+          );
+        }
+
+        if (
+          now < promotion.startsAt ||
+          now > promotion.endsAt
+        ) {
+          throw new HttpError(
+            400,
+            'Ma giam gia het han hoac chua den thoi gian su dung',
+          );
+        }
+
+        if (
+          promotion.usageLimit !== null &&
+          promotion.usageCount >= promotion.usageLimit
+        ) {
+          throw new HttpError(
+            400,
+            'Ma giam gia da het luot su dung',
+          );
+        }
+
+        if (
+          subtotal.lessThan(promotion.minOrderAmount)
+        ) {
+          throw new HttpError(
+            400,
+            'Don hang chua dat gia tri toi thieu',
+          );
+        }
+
+        const discountValue = new Prisma.Decimal(
+          promotion.discountValue,
+        );
+
+        if (
+          promotion.discountType === DiscountType.PERCENTAGE
+        ) {
+          if (
+            discountValue.lessThan(0) ||
+            discountValue.greaterThan(100)
+          ) {
+            throw new HttpError(
+              400,
+              'Gia tri giam gia khong hop le',
+            );
+          }
+
+          discountAmount = subtotal
+            .mul(discountValue)
+            .div(100);
+        } else {
+          if (discountValue.lessThan(0)) {
+            throw new HttpError(
+              400,
+              'Gia tri giam gia khong hop le',
+            );
+          }
+
+          discountAmount = discountValue;
+        }
+
+        // Giới hạn mức giảm tối đa
+        if (promotion.maxDiscount !== null) {
+          const maxDiscount = new Prisma.Decimal(
+            promotion.maxDiscount,
+          );
+
+          if (discountAmount.greaterThan(maxDiscount)) {
+            discountAmount = maxDiscount;
+          }
+        }
+
+        // Không giảm vượt tiền hàng
+        if (discountAmount.greaterThan(subtotal)) {
+          discountAmount = subtotal;
+        }
+
+        promotionId = promotion.id;
+      }
+
+      // --------------------------------------
+      // 5. TÍNH PHÍ VÀ TỔNG TIỀN
+      // --------------------------------------
+
+      // Hiện tại nhóm chưa có chính sách phí vận chuyển.
+      // Tạm thời sử dụng miễn phí vận chuyển.
+
+      const shippingFee = new Prisma.Decimal(0);
+
+      const totalAmount = subtotal
+        .sub(discountAmount)
+        .add(shippingFee);
+
+      if (totalAmount.lessThan(0)) {
+        throw new HttpError(
+          400,
+          'Tong tien don hang khong hop le',
+        );
+      }
+
+      // --------------------------------------
+      // 6. TRỪ TỒN KHO
+      // --------------------------------------
+
+      const stockSnapshots: {
+        variantId: string;
+        quantity: number;
+        stockBefore: number;
+        stockAfter: number;
+      }[] = [];
+
       for (const item of cartItems) {
+        const stockBefore = item.variant.stock;
+
+        if (stockBefore < item.quantity) {
+          throw new HttpError(
+            400,
+            `San pham ${item.variant.product.name} khong du ton kho`,
+          );
+        }
+
         const result = await tx.productVariant.updateMany({
           where: {
             id: item.variantId,
+            isActive: true,
             stock: {
               gte: item.quantity,
             },
-            isActive: true,
           },
           data: {
             stock: {
@@ -127,39 +371,51 @@ export async function createOrder(
 
         if (result.count !== 1) {
           throw new HttpError(
-            400,
-            'San pham khong du so luong ton kho',
+            409,
+            'Ton kho da thay doi. Vui long thu lai',
           );
         }
+
+        stockSnapshots.push({
+          variantId: item.variantId,
+          quantity: item.quantity,
+          stockBefore,
+          stockAfter: stockBefore - item.quantity,
+        });
       }
 
-      const shippingFee = new Prisma.Decimal(0);
-      const discountAmount = new Prisma.Decimal(0);
-
-      const totalAmount = subtotal
-        .add(shippingFee)
-        .sub(discountAmount);
+      // --------------------------------------
+      // 7. TRẠNG THÁI THANH TOÁN
+      // --------------------------------------
 
       const paymentStatus =
         paymentMethod === PaymentMethod.COD
           ? PaymentStatus.UNPAID
           : PaymentStatus.PENDING;
 
-      // Tao don hang
+      // --------------------------------------
+      // 8. TẠO ĐƠN HÀNG
+      // --------------------------------------
+
       const order = await tx.order.create({
         data: {
           userId,
           addressId: addressId ?? null,
+
           recipientName,
           phone,
           shippingAddress,
-          note,
+          note: note || null,
+
           subtotalAmount: subtotal,
           discountAmount,
           shippingFee,
           totalAmount,
+
           status: OrderStatus.PENDING,
           paymentStatus,
+
+          promotionId,
 
           items: {
             create: orderItems,
@@ -180,9 +436,92 @@ export async function createOrder(
         },
       });
 
-      // Xoa gio hang
+      // --------------------------------------
+      // 9. GHI PHIẾU XUẤT KHO
+      // --------------------------------------
+
+      await tx.inventoryDocument.create({
+        data: {
+          code: taoMaPhieuKho(
+            InventoryDocumentType.ORDER_OUT,
+          ),
+
+          type: InventoryDocumentType.ORDER_OUT,
+          status: InventoryDocumentStatus.COMPLETED,
+
+          reason: 'Xuat kho khi khach hang dat hang',
+          note: `Don hang ${order.id}`,
+
+          createdById: userId,
+          confirmedById: userId,
+
+          orderId: order.id,
+          completedAt: new Date(),
+
+          items: {
+            create: stockSnapshots.map((item) => ({
+              variantId: item.variantId,
+              quantity: item.quantity,
+              stockBefore: item.stockBefore,
+              stockAfter: item.stockAfter,
+              note: `Xuat kho cho don hang ${order.id}`,
+            })),
+          },
+        },
+      });
+
+      // --------------------------------------
+      // 10. CẬP NHẬT LƯỢT SỬ DỤNG VOUCHER
+      // --------------------------------------
+
+      if (promotionId) {
+        const updatedPromotion =
+          await tx.promotion.updateMany({
+            where: {
+              id: promotionId,
+              isActive: true,
+              ...(promotionCode
+                ? {
+                    OR: [
+                      { usageLimit: null },
+                      {
+                        usageCount: {
+                          lt: (
+                            await tx.promotion.findUniqueOrThrow({
+                              where: { id: promotionId },
+                              select: { usageLimit: true },
+                            })
+                          ).usageLimit ?? 2147483647,
+                        },
+                      },
+                    ],
+                  }
+                : {}),
+            },
+
+            data: {
+              usageCount: {
+                increment: 1,
+              },
+            },
+          });
+
+        if (updatedPromotion.count !== 1) {
+          throw new HttpError(
+            409,
+            'Voucher da het luot su dung',
+          );
+        }
+      }
+
+      // --------------------------------------
+      // 11. XÓA GIỎ HÀNG
+      // --------------------------------------
+
       await tx.cartItem.deleteMany({
-        where: { userId },
+        where: {
+          userId,
+        },
       });
 
       return order;
@@ -195,7 +534,7 @@ export async function createOrder(
 }
 
 // ==========================================
-// 2. LAY LICH SU DON HANG
+// 2. LẤY LỊCH SỬ ĐƠN HÀNG
 // ==========================================
 
 export async function getMyOrders(userId: string) {
@@ -216,7 +555,7 @@ export async function getMyOrders(userId: string) {
 }
 
 // ==========================================
-// 3. XEM CHI TIET DON HANG
+// 3. XEM CHI TIẾT ĐƠN HÀNG
 // ==========================================
 
 export async function getOrderDetail(
@@ -236,14 +575,17 @@ export async function getOrderDetail(
   });
 
   if (!order) {
-    throw new HttpError(404, 'Khong tim thay don hang');
+    throw new HttpError(
+      404,
+      'Khong tim thay don hang',
+    );
   }
 
   return order;
 }
 
 // ==========================================
-// 4. ADMIN LAY TAT CA DON HANG
+// 4. ADMIN LẤY TẤT CẢ ĐƠN HÀNG
 // ==========================================
 
 export async function getAllOrders(
@@ -273,26 +615,42 @@ export async function getAllOrders(
 }
 
 // ==========================================
-// 5. CAP NHAT TRANG THAI DON HANG
+// 5. ADMIN CẬP NHẬT TRẠNG THÁI ĐƠN
 // ==========================================
 
 export async function updateOrderStatus(
   orderId: string,
   status: OrderStatus,
 ) {
-  const validStatuses = Object.values(OrderStatus);
+  if (!Object.values(OrderStatus).includes(status)) {
+    throw new HttpError(
+      400,
+      'Trang thai don hang khong hop le',
+    );
+  }
 
-  if (!validStatuses.includes(status)) {
-    throw new HttpError(400, 'Trang thai khong hop le');
+  if (
+    status === OrderStatus.PENDING ||
+    status === OrderStatus.CANCELLED
+  ) {
+    throw new HttpError(
+      400,
+      'Khong duoc cap nhat truc tiep sang trang thai nay',
+    );
   }
 
   return prisma.$transaction(async (tx) => {
     const order = await tx.order.findUnique({
-      where: { id: orderId },
+      where: {
+        id: orderId,
+      },
     });
 
     if (!order) {
-      throw new HttpError(404, 'Khong tim thay don hang');
+      throw new HttpError(
+        404,
+        'Khong tim thay don hang',
+      );
     }
 
     if (
@@ -301,15 +659,7 @@ export async function updateOrderStatus(
     ) {
       throw new HttpError(
         400,
-        'Khong the thay doi trang thai don hang nay',
-      );
-    }
-
-    if (status === OrderStatus.PENDING ||
-        status === OrderStatus.CANCELLED) {
-      throw new HttpError(
-        400,
-        'Trang thai nay khong duoc phep cap nhat truc tiep',
+        'Don hang khong the tiep tuc cap nhat',
       );
     }
 
@@ -347,7 +697,7 @@ export async function updateOrderStatus(
 }
 
 // ==========================================
-// 6. HUY DON HANG VA HOAN TON
+// 6. HỦY ĐƠN HÀNG VÀ HOÀN TỒN KHO
 // ==========================================
 
 export async function cancelOrder(
@@ -355,102 +705,193 @@ export async function cancelOrder(
   orderId: string,
   isAdmin = false,
 ) {
-  return prisma.$transaction(async (tx) => {
-
-    const order = await tx.order.findFirst({
-      where: {
-        id: orderId,
-        ...(isAdmin ? {} : { userId }),
-      },
-
-      include: {
-        items: true,
-      },
-    });
-
-    if (!order) {
-      throw new HttpError(404, 'Khong tim thay don hang');
-    }
-
-    if (
-      order.status !== OrderStatus.PENDING &&
-      order.status !== OrderStatus.CONFIRMED
-    ) {
-      throw new HttpError(
-        400,
-        'Don hang khong the huy o trang thai hien tai',
-      );
-    }
-
-    if (order.paymentStatus === PaymentStatus.PAID) {
-      throw new HttpError(
-        400,
-        'Don hang da thanh toan, can xu ly hoan tien truoc khi huy',
-      );
-    }
-
-    // Cap nhat co dieu kien de tranh huy hai lan
-    const updated = await tx.order.updateMany({
-      where: {
-        id: orderId,
-        userId: isAdmin ? undefined : userId,
-        status: order.status,
-        paymentStatus: {
-          not: PaymentStatus.PAID,
-        },
-      },
-
-      data: {
-        status: OrderStatus.CANCELLED,
-      },
-    });
-
-    if (updated.count !== 1) {
-      throw new HttpError(
-        409,
-        'Don hang da duoc xu ly boi yeu cau khac',
-      );
-    }
-
-    // Hoan lai ton kho
-    for (const item of order.items) {
-      if (!item.variantId) continue;
-
-      await tx.productVariant.update({
+  return prisma.$transaction(
+    async (tx) => {
+      // Tìm đơn hàng
+      const order = await tx.order.findFirst({
         where: {
-          id: item.variantId,
+          id: orderId,
+          ...(isAdmin ? {} : { userId }),
+        },
+
+        include: {
+          items: true,
+        },
+      });
+
+      if (!order) {
+        throw new HttpError(
+          404,
+          'Khong tim thay don hang',
+        );
+      }
+
+      // Chỉ cho phép hủy PENDING hoặc CONFIRMED
+      if (
+        order.status !== OrderStatus.PENDING &&
+        order.status !== OrderStatus.CONFIRMED
+      ) {
+        throw new HttpError(
+          400,
+          'Don hang khong the huy o trang thai hien tai',
+        );
+      }
+
+      // Đơn đã thanh toán phải xử lý hoàn tiền trước
+      if (order.paymentStatus === PaymentStatus.PAID) {
+        throw new HttpError(
+          400,
+          'Don hang da thanh toan. Can xu ly hoan tien truoc khi huy',
+        );
+      }
+
+      // Cập nhật trạng thái có điều kiện
+      const updated = await tx.order.updateMany({
+        where: {
+          id: orderId,
+          ...(isAdmin ? {} : { userId }),
+          status: order.status,
+          paymentStatus: {
+            not: PaymentStatus.PAID,
+          },
         },
 
         data: {
-          stock: {
-            increment: item.quantity,
-          },
+          status: OrderStatus.CANCELLED,
         },
       });
-    }
 
-    // Cap nhat thanh toan dang cho
-    await tx.payment.updateMany({
-      where: {
-        orderId,
-        status: PaymentStatus.PENDING,
-      },
+      if (updated.count !== 1) {
+        throw new HttpError(
+          409,
+          'Don hang da duoc xu ly boi yeu cau khac',
+        );
+      }
 
-      data: {
-        status: PaymentStatus.FAILED,
-        failureReason: 'Don hang da bi huy',
-      },
-    });
+      // Hoàn tồn kho
+      const stockSnapshots: {
+        variantId: string;
+        quantity: number;
+        stockBefore: number;
+        stockAfter: number;
+      }[] = [];
 
-    return tx.order.findUnique({
-      where: {
-        id: orderId,
-      },
+      for (const item of order.items) {
+        if (!item.variantId) {
+          continue;
+        }
 
-      include: {
-        items: true,
-        payments: true,
-      },
-    });
-  });
+        const variant = await tx.productVariant.findUnique({
+          where: {
+            id: item.variantId,
+          },
+
+          select: {
+            id: true,
+            stock: true,
+          },
+        });
+
+        if (!variant) {
+          continue;
+        }
+
+        const stockBefore = variant.stock;
+        const stockAfter = stockBefore + item.quantity;
+
+        await tx.productVariant.update({
+          where: {
+            id: item.variantId,
+          },
+
+          data: {
+            stock: {
+              increment: item.quantity,
+            },
+          },
+        });
+
+        stockSnapshots.push({
+          variantId: item.variantId,
+          quantity: item.quantity,
+          stockBefore,
+          stockAfter,
+        });
+      }
+
+      // Ghi phiếu hoàn kho
+      if (stockSnapshots.length > 0) {
+        await tx.inventoryDocument.create({
+          data: {
+            code: taoMaPhieuKho(
+              InventoryDocumentType.ORDER_RETURN,
+            ),
+
+            type: InventoryDocumentType.ORDER_RETURN,
+            status: InventoryDocumentStatus.COMPLETED,
+
+            reason: 'Hoan kho khi huy don hang',
+            note: `Hoan kho don hang ${order.id}`,
+
+            createdById: userId,
+            confirmedById: userId,
+
+            orderId: order.id,
+            completedAt: new Date(),
+
+            items: {
+              create: stockSnapshots.map((item) => ({
+                variantId: item.variantId,
+                quantity: item.quantity,
+                stockBefore: item.stockBefore,
+                stockAfter: item.stockAfter,
+                note: `Hoan kho don hang ${order.id}`,
+              })),
+            },
+          },
+        });
+      }
+
+      // Cập nhật thanh toán đang chờ
+      if (order.paymentStatus === PaymentStatus.PENDING) {
+        await tx.payment.updateMany({
+          where: {
+            orderId,
+            status: PaymentStatus.PENDING,
+          },
+
+          data: {
+            status: PaymentStatus.FAILED,
+            failureReason: 'Don hang da bi huy',
+          },
+        });
+
+        await tx.order.update({
+          where: {
+            id: orderId,
+          },
+
+          data: {
+            paymentStatus: PaymentStatus.FAILED,
+          },
+        });
+      }
+
+      // Trả về đơn hàng sau khi hủy
+      return tx.order.findUnique({
+        where: {
+          id: orderId,
+        },
+
+        include: {
+          items: true,
+          payments: true,
+        },
+      });
+    },
+    {
+      isolationLevel:
+        Prisma.TransactionIsolationLevel.Serializable,
+    },
+  );
 }
