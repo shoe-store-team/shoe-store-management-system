@@ -1,8 +1,7 @@
+import { useSyncExternalStore } from "react";
 
-import { useSyncExternalStore } from 'react';
-
-const TOKEN_KEY = 'token';
-const USER_KEY = 'user';
+const TOKEN_KEY = "token";
+const USER_KEY = "user";
 
 export type AuthUser = {
   id?: string;
@@ -13,7 +12,7 @@ export type AuthUser = {
 
 let token: string | null = localStorage.getItem(TOKEN_KEY);
 let user: AuthUser | null = JSON.parse(
-  localStorage.getItem(USER_KEY) || 'null',
+  localStorage.getItem(USER_KEY) || "null",
 );
 
 const listeners = new Set<() => void>();
@@ -40,7 +39,11 @@ export const authStore = {
     localStorage.setItem(TOKEN_KEY, value);
     notify();
   },
-
+  setUser(userData: AuthUser) {
+    user = userData;
+    localStorage.setItem(USER_KEY, JSON.stringify(userData));
+    notify();
+  },
   logout() {
     token = null;
     user = null;
