@@ -11,6 +11,6 @@ export default defineConfig([
     languageOptions: {
       globals: globals.node,
     },
-    include: ["src", "src/**/*.ts", "src/**/*.tsx"],
+    //include: ["src", "src/**/*.ts", "src/**/*.tsx"],
   },
 ]);
