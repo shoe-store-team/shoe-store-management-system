@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import "./StockExportPage.css";
+import { authStore } from "../../../stores/authStore";
 
 const API_URL = "http://localhost:3000/api/inventory";
 
@@ -11,20 +12,32 @@ type Variant = {
   stock: number;
   product: { name: string };
 };
-type Operator = {
-  id: string;
-  name: string | null;
-  email: string;
-  role: string;
-};
+// type Operator = {
+//   id: string;
+//   name: string | null;
+//   email: string;
+//   role: string;
+// };
 type Line = { variantId: string; quantity: number };
 type Document = { id: string; code: string };
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_URL}${path}`, init);
+  const token = authStore.getToken();
+
+  const response = await fetch(`${API_URL}${path}`, {
+    ...init,
+    headers: {
+      ...init?.headers,
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
   const result = await response.json();
-  if (!response.ok)
+
+  if (!response.ok) {
     throw new Error(result.message || "Yêu cầu không thành công.");
+  }
+
   return result;
 }
 
@@ -34,10 +47,8 @@ function variantLabel(variant: Variant) {
 
 export function StockExportPage() {
   const [variants, setVariants] = useState<Variant[]>([]);
-  const [operators, setOperators] = useState<Operator[]>([]);
   const [lines, setLines] = useState<Line[]>([]);
   const [selectedVariantId, setSelectedVariantId] = useState("");
-  const [operatorId, setOperatorId] = useState("");
   const [reason, setReason] = useState("");
   const [note, setNote] = useState("");
   const [draft, setDraft] = useState<Document | null>(null);
@@ -47,23 +58,18 @@ export function StockExportPage() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    Promise.all([
-      request<Variant[]>("/variants"),
-      request<Operator[]>("/operators"),
-    ])
-      .then(([availableVariants, availableOperators]) => {
-        setVariants(availableVariants);
-        setOperators(availableOperators);
-        setSelectedVariantId(availableVariants[0]?.id ?? "");
-        setOperatorId(availableOperators[0]?.id ?? "");
-      })
-      .catch((cause: unknown) =>
-        setError(
-          cause instanceof Error ? cause.message : "Không thể tải dữ liệu kho.",
-        ),
-      )
-      .finally(() => setLoading(false));
-  }, []);
+  request<Variant[]>("/variants")
+    .then((availableVariants) => {
+      setVariants(availableVariants);
+      setSelectedVariantId(availableVariants[0]?.id ?? "");
+    })
+    .catch((cause: unknown) =>
+      setError(
+        cause instanceof Error ? cause.message : "Không thể tải dữ liệu kho.",
+      ),
+    )
+    .finally(() => setLoading(false));
+}, []);
 
   function addLine() {
     if (
@@ -89,10 +95,10 @@ export function StockExportPage() {
     event.preventDefault();
     setError("");
     setMessage("");
-    if (!operatorId || lines.length === 0) {
-      setError("Hãy chọn người lập phiếu và thêm ít nhất một biến thể.");
-      return;
-    }
+   if (lines.length === 0) {
+  setError("Hãy thêm ít nhất một biến thể.");
+  return;
+}
 
     const insufficientLine = lines.find((line) => {
       const variant = variants.find((v) => v.id === line.variantId);
@@ -117,7 +123,6 @@ export function StockExportPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             type: "EXPORT",
-            createdById: operatorId,
             reason,
             note,
             items: lines.map((line) => line),
@@ -138,7 +143,7 @@ export function StockExportPage() {
       await request(`/documents/${document.id}/confirm`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ confirmedById: operatorId }),
+        body: JSON.stringify({}),
       });
       setDraft(null);
       setLines([]);
@@ -268,21 +273,7 @@ export function StockExportPage() {
           </div>
 
           <div className="export-form">
-            <label>
-              Người lập / xác nhận
-              <select
-                value={operatorId}
-                onChange={(event) => setOperatorId(event.target.value)}
-                required
-              >
-                <option value="">Chọn nhân viên</option>
-                {operators.map((operator) => (
-                  <option key={operator.id} value={operator.id}>
-                    {operator.name || operator.email} ({operator.role})
-                  </option>
-                ))}
-              </select>
-            </label>
+           
             <label>
               Lý do xuất
               <input
@@ -303,11 +294,7 @@ export function StockExportPage() {
             </label>
           </div>
 
-          {operators.length === 0 && (
-            <p className="thong-bao-loi">
-              Chưa có tài khoản ADMIN hoặc WAREHOUSE_STAFF đang hoạt động.
-            </p>
-          )}
+        
 
           <div className="inv-picker-box">
             <label>
@@ -430,7 +417,7 @@ export function StockExportPage() {
           <div className="inv-footer-bar">
             <button
               type="submit"
-              disabled={saving || !operatorId || !lines.length}
+              disabled={saving || !lines.length}
             >
               {saving
                 ? "Đang xử lý..."
