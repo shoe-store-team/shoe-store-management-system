@@ -5,6 +5,7 @@ import {
   assertAdmin,
   wrap,
   idParam,
+  HttpError,
 } from '../common/http';
 
 import {
@@ -17,7 +18,7 @@ const router = Router();
 router.use(authenticateToken);
 
 // ==========================================
-// 1. TAO DON HANG
+// 1. TẠO ĐƠN HÀNG
 // POST /api/orders
 // ==========================================
 
@@ -39,7 +40,7 @@ router.post(
 );
 
 // ==========================================
-// 2. LICH SU DON HANG
+// 2. LẤY LỊCH SỬ ĐƠN HÀNG CỦA KHÁCH
 // GET /api/orders/my-orders
 // ==========================================
 
@@ -51,13 +52,14 @@ router.get(
     const orders = await orderService.getMyOrders(userId);
 
     res.json({
+      message: 'Lay lich su don hang thanh cong',
       data: orders,
     });
   }),
 );
 
 // ==========================================
-// 3. ADMIN LAY TAT CA DON HANG
+// 3. ADMIN LẤY TẤT CẢ ĐƠN HÀNG
 // GET /api/orders
 // ==========================================
 
@@ -68,17 +70,20 @@ router.get(
 
     const status = req.query.status;
 
+    // Kiểm tra trạng thái nếu có truyền lên
     if (
       status !== undefined &&
-      (typeof status !== 'string' ||
+      (
+        typeof status !== 'string' ||
         !Object.values(OrderStatus).includes(
           status as OrderStatus,
-        ))
+        )
+      )
     ) {
-      res.status(400).json({
-        message: 'Trang thai don hang khong hop le',
-      });
-      return;
+      throw new HttpError(
+        400,
+        'Trang thai don hang khong hop le',
+      );
     }
 
     const orders = await orderService.getAllOrders(
@@ -86,13 +91,14 @@ router.get(
     );
 
     res.json({
+      message: 'Lay danh sach don hang thanh cong',
       data: orders,
     });
   }),
 );
 
 // ==========================================
-// 4. XEM CHI TIET DON HANG
+// 4. XEM CHI TIẾT ĐƠN HÀNG
 // GET /api/orders/:id
 // ==========================================
 
@@ -108,13 +114,14 @@ router.get(
     );
 
     res.json({
+      message: 'Lay chi tiet don hang thanh cong',
       data: order,
     });
   }),
 );
 
 // ==========================================
-// 5. CAP NHAT TRANG THAI DON HANG
+// 5. ADMIN CẬP NHẬT TRẠNG THÁI ĐƠN HÀNG
 // PATCH /api/orders/:id/status
 // ==========================================
 
@@ -124,11 +131,24 @@ router.patch(
     await assertAdmin(req);
 
     const orderId = idParam(req);
-    const { status } = req.body;
+    const status = req.body?.status;
+
+    // Kiểm tra dữ liệu đầu vào
+    if (
+      typeof status !== 'string' ||
+      !Object.values(OrderStatus).includes(
+        status as OrderStatus,
+      )
+    ) {
+      throw new HttpError(
+        400,
+        'Trang thai don hang khong hop le',
+      );
+    }
 
     const order = await orderService.updateOrderStatus(
       orderId,
-      status,
+      status as OrderStatus,
     );
 
     res.json({
@@ -139,7 +159,7 @@ router.patch(
 );
 
 // ==========================================
-// 6. HUY DON HANG
+// 6. HỦY ĐƠN HÀNG
 // PATCH /api/orders/:id/cancel
 // ==========================================
 
@@ -147,10 +167,29 @@ router.patch(
   '/:id/cancel',
   wrap(async (req, res) => {
     const userId = currentUserId(req);
+    const orderId = idParam(req);
+
+    let isAdmin = false;
+
+    // Xác định người thực hiện có phải Admin không
+    try {
+      await assertAdmin(req);
+      isAdmin = true;
+    } catch (error) {
+      // Chỉ bỏ qua lỗi không có quyền Admin.
+      // Các lỗi đăng nhập hoặc lỗi khác vẫn phải trả về.
+      if (
+        !(error instanceof HttpError) ||
+        error.status !== 403
+      ) {
+        throw error;
+      }
+    }
 
     const order = await orderService.cancelOrder(
       userId,
-      idParam(req),
+      orderId,
+      isAdmin,
     );
 
     res.json({
