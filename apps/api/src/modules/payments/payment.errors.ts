@@ -1,6 +1,16 @@
-/** Lỗi nghiệp vụ của module thanh toán (có mã HTTP). Module tự bắt lỗi này, không phụ thuộc error.middleware của nhóm. */
+/**
+ * Lỗi nghiệp vụ của module thanh toán.
+ * Mỗi lỗi có mã HTTP tương ứng.
+ */
 export class PaymentError extends Error {
-  constructor(public status: number, message: string) {
+  public readonly status: number;
+
+  constructor(status: number, message: string) {
     super(message);
+
+    this.name = "PaymentError";
+    this.status = status;
+
+    Object.setPrototypeOf(this, PaymentError.prototype);
   }
 }
