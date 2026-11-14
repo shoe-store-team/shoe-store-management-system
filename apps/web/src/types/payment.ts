@@ -24,6 +24,9 @@ export interface PaymentResult {
   reference: string;
   paymentUrl: string | null; // có khi VNPay đang PENDING
   expiresAt: string | null;
+  failureReason: string | null; // VNPAY_24 (khách huỷ), EXPIRED, SWITCHED, ORDER_CANCELLED...
+  expired: boolean; // link VNPay đã hết hạn
+  refundRequired: boolean; // đơn đã huỷ nhưng tiền đã về
   message?: string;
 }
 
