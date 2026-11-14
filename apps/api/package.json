@@ -31,6 +31,7 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "seed": "ts-node prisma/seed.ts",
+    "cleanup-test-data": "ts-node prisma/cleanup-test-data.ts",
     "lint": "eslint ."
   },
   "allowScripts": {

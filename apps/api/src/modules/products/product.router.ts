@@ -1,5 +1,9 @@
 
 import { Router, Request, Response } from 'express';
+import {
+  authenticateToken,
+  authorizeRoles
+} from '../../middlewares/auth.middleware';
 
 import {
   layTatCaSanPham,
@@ -56,7 +60,11 @@ router.get('/:id', async (req: Request, res: Response) => {
 });
 
 // POST /api/products
-router.post('/', async (req: Request, res: Response) => {
+router.post(
+  '/',
+  authenticateToken,
+  authorizeRoles('ADMIN'),
+  async (req: Request, res: Response) => {
   try {
     const product = await taoSanPham(req.body);
 
@@ -70,7 +78,11 @@ router.post('/', async (req: Request, res: Response) => {
 });
 
 // PUT /api/products/:id
-router.put('/:id', async (req: Request, res: Response) => {
+router.put(
+  '/:id',
+  authenticateToken,
+  authorizeRoles('ADMIN'),
+  async (req: Request, res: Response) => {
   try {
     const id = req.params.id;
 
@@ -92,7 +104,11 @@ router.put('/:id', async (req: Request, res: Response) => {
 });
 
 // DELETE /api/products/:id
-router.delete('/:id', async (req: Request, res: Response) => {
+router.delete(
+  '/:id',
+  authenticateToken,
+  authorizeRoles('ADMIN'),
+  async (req: Request, res: Response) => {
   try {
     const id = req.params.id;
 

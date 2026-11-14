@@ -21,6 +21,7 @@ type BienTheDangNhap = {
   size: string;
   color: string;
   priceOverride: string;
+  imageUrl: string;
 };
 
 type ProductFormProps = {
@@ -81,6 +82,7 @@ export function ProductForm({
             variant.priceOverride == null
               ? ''
               : String(variant.priceOverride),
+          imageUrl: variant.imageUrl ?? '',
         }));
       }
 
@@ -90,6 +92,7 @@ export function ProductForm({
           size: '40',
           color: 'Black',
           priceOverride: '',
+          imageUrl: '',
         },
       ];
     }
@@ -103,13 +106,14 @@ export function ProductForm({
         size: '40',
         color: '',
         priceOverride: '',
+        imageUrl: '',
       },
     ]);
   }
 
   function capNhatBienThe(
     index: number,
-    field: 'size' | 'color' | 'priceOverride',
+    field: 'size' | 'color' | 'priceOverride' | 'imageUrl',
     value: string
   ) {
     setVariants((current) =>
@@ -133,6 +137,7 @@ export function ProductForm({
         variant.priceOverride.trim() === ''
           ? null
           : Number(variant.priceOverride),
+      imageUrl: variant.imageUrl.trim() || null,
     }));
   }
 
@@ -149,8 +154,6 @@ export function ProductForm({
     const coNhapGia = giaBan.trim() !== '';
     const basePrice = Number(giaBan);
 
-    // Khi thêm mới bắt buộc có giá.
-    // Khi sửa có thể để trống giá nếu không muốn đổi giá.
     if (!tenGiay.trim()) {
       alert('Vui lòng nhập tên sản phẩm.');
       return;
@@ -205,7 +208,7 @@ export function ProductForm({
       return;
     }
 
-    // Dữ liệu chung, không tự động gửi giá khi chỉnh sửa.
+    // Dữ liệu chung của sản phẩm.
     const duLieuChung = {
       name: tenGiay.trim(),
       description: moTa.trim(),
@@ -355,19 +358,20 @@ export function ProductForm({
 
           {sanPhamDangSua && (
             <small className="sl-form-note">
-              Giá hiện tại: {sanPhamDangSua.basePrice.toLocaleString('vi-VN')} VNĐ.
+              Giá hiện tại:{' '}
+              {sanPhamDangSua.basePrice.toLocaleString('vi-VN')} VNĐ.
               Để trống nếu muốn giữ nguyên giá.
             </small>
           )}
         </label>
 
         <label className="sl-field sl-full">
-          URL hình ảnh
+          URL hình ảnh chung của sản phẩm
           <input
-            type="url"
+            type="text"
             value={imageUrl}
             onChange={(e) => setImageUrl(e.target.value)}
-            placeholder="https://example.com/shoe.jpg"
+            placeholder="/images/products/1-do.jpg"
             disabled={dangXuLy}
           />
         </label>
@@ -407,8 +411,8 @@ export function ProductForm({
         <div className="sl-form-divider sl-full">
           <strong>Biến thể sản phẩm</strong>
           <small>
-            Biến thể cũ chỉ sửa được giá riêng. Biến thể mới có thể
-            nhập size, màu và giá.
+            Mỗi màu có thể sử dụng một ảnh riêng. Các size cùng màu
+            dùng chung ảnh. Biến thể cũ giữ nguyên SKU và tồn kho.
           </small>
         </div>
 
@@ -418,7 +422,7 @@ export function ProductForm({
             className="sl-full sl-variant-row"
             style={{
               display: 'grid',
-              gridTemplateColumns: '1fr 1fr 1fr auto',
+              gridTemplateColumns: '1fr 1fr 1.5fr 1fr auto',
               gap: '12px',
               alignItems: 'end',
               marginTop: '12px',
@@ -449,6 +453,19 @@ export function ProductForm({
                 placeholder="Black, White..."
                 required
                 disabled={dangXuLy || variant.laBienTheCu}
+              />
+            </label>
+
+            <label className="sl-field">
+              Ảnh của biến thể
+              <input
+                type="text"
+                value={variant.imageUrl}
+                onChange={(e) =>
+                  capNhatBienThe(index, 'imageUrl', e.target.value)
+                }
+                placeholder="/images/products/1-do.jpg"
+                disabled={dangXuLy}
               />
             </label>
 
@@ -486,6 +503,27 @@ export function ProductForm({
               >
                 Xóa
               </button>
+            )}
+
+            {variant.imageUrl.trim() && (
+              <div className="sl-full">
+                <img
+                  src={variant.imageUrl}
+                  alt={`Ảnh biến thể ${variant.color}`}
+                  style={{
+                    width: '100px',
+                    height: '100px',
+                    objectFit: 'cover',
+                    borderRadius: '8px',
+                  }}
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                  onLoad={(e) => {
+                    e.currentTarget.style.display = 'block';
+                  }}
+                />
+              </div>
             )}
           </div>
         ))}

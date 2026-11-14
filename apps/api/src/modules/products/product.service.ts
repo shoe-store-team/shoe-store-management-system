@@ -5,6 +5,7 @@ import { Prisma } from '@prisma/client';
 type BienTheInput = {
   size: number;
   color: string;
+  imageUrl?: string | null;
   priceOverride?: number | null;
 };
 
@@ -139,6 +140,37 @@ function taoSku(
   return `${productCode}-V${String(soThuTu).padStart(3, '0')}`;
 }
 
+// Chấp nhận ảnh nội bộ trong public hoặc URL ảnh HTTP/HTTPS.
+function kiemTraDuongDanAnh(imageUrl?: string | null) {
+  if (imageUrl == null || imageUrl.trim() === '') {
+    return;
+  }
+
+  const value = imageUrl.trim();
+
+  // Ảnh nội bộ: /images/products/ten-anh.jpg
+  if (
+    value.startsWith('/images/products/') &&
+    !value.includes('..') &&
+    !value.includes('\\')
+  ) {
+    return;
+  }
+
+  // Ảnh bên ngoài: chỉ chấp nhận HTTP/HTTPS.
+  try {
+    const url = new URL(value);
+
+    if (url.protocol === 'http:' || url.protocol === 'https:') {
+      return;
+    }
+  } catch {
+    // Xử lý chung ở bên dưới.
+  }
+
+  throw new ProductServiceError('Đường dẫn ảnh biến thể không hợp lệ.');
+}
+
 // Kiểm tra dữ liệu biến thể.
 function kiemTraBienThe(variants: BienTheInput[]) {
   if (!Array.isArray(variants) || variants.length === 0) {
@@ -163,6 +195,7 @@ function kiemTraBienThe(variants: BienTheInput[]) {
     ) {
       throw new ProductServiceError('Màu sắc không hợp lệ.');
     }
+    kiemTraDuongDanAnh(variant.imageUrl);
 
     if (
       variant.priceOverride !== undefined &&
@@ -189,6 +222,7 @@ function kiemTraBienThe(variants: BienTheInput[]) {
 
     daGap.add(khoa);
   }
+  
 }
 
 // Kiểm tra danh mục có tồn tại không.
