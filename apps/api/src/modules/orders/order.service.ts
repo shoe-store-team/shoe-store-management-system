@@ -31,6 +31,17 @@ function kiemTraSoDienThoai(phone: string): boolean {
   );
 }
 
+// Khóa đơn hàng để đồng bộ với payment.service.ts.
+// Cả hai nơi phải dùng cùng một khóa.
+async function khoaDonHang(
+  tx: Prisma.TransactionClient,
+  orderId: string,
+) {
+  await tx.$executeRaw`
+    SELECT pg_advisory_xact_lock(hashtext(${orderId}::text))
+  `;
+}
+
 // ==========================================
 // 1. TẠO ĐƠN HÀNG
 // ==========================================
@@ -48,19 +59,11 @@ export async function createOrder(
     voucherCode?: string;
   },
 ) {
-  const recipientName = String(
-    data.recipientName ?? '',
-  ).trim();
-
+  const recipientName = String(data.recipientName ?? '').trim();
   const phone = String(data.phone ?? '').trim();
-
-  const shippingAddress = String(
-    data.shippingAddress ?? '',
-  ).trim();
-
+  const shippingAddress = String(data.shippingAddress ?? '').trim();
   const addressId = data.addressId;
   const note = data.note?.trim();
-
   const paymentMethod = data.paymentMethod;
 
   const promotionCode = String(
@@ -69,33 +72,24 @@ export async function createOrder(
     .trim()
     .toUpperCase();
 
-  // Kiểm tra thông tin giao hàng
   if (!recipientName || !phone || !shippingAddress) {
-    throw new HttpError(
-      400,
-      'Thong tin giao hang khong day du',
-    );
+    throw new HttpError(400, 'Thong tin giao hang khong day du');
   }
 
   if (!kiemTraSoDienThoai(phone)) {
-    throw new HttpError(
-      400,
-      'So dien thoai khong hop le',
-    );
+    throw new HttpError(400, 'So dien thoai khong hop le');
   }
 
-  if (!Object.values(PaymentMethod).includes(paymentMethod)) {
-    throw new HttpError(
-      400,
-      'Phuong thuc thanh toan khong hop le',
-    );
+  if (
+    paymentMethod !== PaymentMethod.COD &&
+    paymentMethod !== PaymentMethod.VNPAY
+  ) {
+    throw new HttpError(400, 'Phuong thuc thanh toan khong duoc ho tro');
   }
 
   return prisma.$transaction(
     async (tx) => {
-      // --------------------------------------
       // 1. LẤY GIỎ HÀNG
-      // --------------------------------------
 
       const cartItems = await tx.cartItem.findMany({
         where: { userId },
@@ -112,9 +106,7 @@ export async function createOrder(
         throw new HttpError(400, 'Gio hang dang trong');
       }
 
-      // --------------------------------------
       // 2. KIỂM TRA ĐỊA CHỈ
-      // --------------------------------------
 
       if (addressId) {
         const address = await tx.address.findFirst({
@@ -125,16 +117,11 @@ export async function createOrder(
         });
 
         if (!address) {
-          throw new HttpError(
-            404,
-            'Dia chi giao hang khong ton tai',
-          );
+          throw new HttpError(404, 'Dia chi giao hang khong ton tai');
         }
       }
 
-      // --------------------------------------
       // 3. KIỂM TRA SẢN PHẨM VÀ TÍNH TIỀN
-      // --------------------------------------
 
       let subtotal = new Prisma.Decimal(0);
 
@@ -151,17 +138,10 @@ export async function createOrder(
         const variant = item.variant;
         const product = variant.product;
 
-        if (
-          !Number.isInteger(item.quantity) ||
-          item.quantity <= 0
-        ) {
-          throw new HttpError(
-            400,
-            'So luong san pham khong hop le',
-          );
+        if (!Number.isInteger(item.quantity) || item.quantity <= 0) {
+          throw new HttpError(400, 'So luong san pham khong hop le');
         }
 
-        // Kiểm tra biến thể
         if (!variant.isActive) {
           throw new HttpError(
             400,
@@ -169,7 +149,6 @@ export async function createOrder(
           );
         }
 
-        // Kiểm tra sản phẩm
         if (!product.isActive) {
           throw new HttpError(
             400,
@@ -177,23 +156,16 @@ export async function createOrder(
           );
         }
 
-        // Backend lấy giá từ Database
         const price = new Prisma.Decimal(
           variant.priceOverride ?? product.basePrice,
         );
 
         if (price.lessThanOrEqualTo(0)) {
-          throw new HttpError(
-            400,
-            'Gia san pham khong hop le',
-          );
+          throw new HttpError(400, 'Gia san pham khong hop le');
         }
 
-        subtotal = subtotal.add(
-          price.mul(item.quantity),
-        );
+        subtotal = subtotal.add(price.mul(item.quantity));
 
-        // Lưu snapshot sản phẩm
         orderItems.push({
           variantId: variant.id,
           productName: product.name,
@@ -204,9 +176,7 @@ export async function createOrder(
         });
       }
 
-      // --------------------------------------
       // 4. KIỂM TRA VÀ TÍNH VOUCHER
-      // --------------------------------------
 
       let discountAmount = new Prisma.Decimal(0);
       let promotionId: string | null = null;
@@ -219,25 +189,16 @@ export async function createOrder(
         });
 
         if (!promotion) {
-          throw new HttpError(
-            400,
-            'Ma giam gia khong ton tai',
-          );
+          throw new HttpError(400, 'Ma giam gia khong ton tai');
         }
 
         const now = new Date();
 
         if (!promotion.isActive) {
-          throw new HttpError(
-            400,
-            'Ma giam gia khong con hoat dong',
-          );
+          throw new HttpError(400, 'Ma giam gia khong con hoat dong');
         }
 
-        if (
-          now < promotion.startsAt ||
-          now > promotion.endsAt
-        ) {
+        if (now < promotion.startsAt || now > promotion.endsAt) {
           throw new HttpError(
             400,
             'Ma giam gia het han hoac chua den thoi gian su dung',
@@ -248,53 +209,34 @@ export async function createOrder(
           promotion.usageLimit !== null &&
           promotion.usageCount >= promotion.usageLimit
         ) {
-          throw new HttpError(
-            400,
-            'Ma giam gia da het luot su dung',
-          );
+          throw new HttpError(400, 'Ma giam gia da het luot su dung');
         }
 
-        if (
-          subtotal.lessThan(promotion.minOrderAmount)
-        ) {
-          throw new HttpError(
-            400,
-            'Don hang chua dat gia tri toi thieu',
-          );
+        if (subtotal.lessThan(promotion.minOrderAmount)) {
+          throw new HttpError(400, 'Don hang chua dat gia tri toi thieu');
         }
 
         const discountValue = new Prisma.Decimal(
           promotion.discountValue,
         );
 
-        if (
-          promotion.discountType === DiscountType.PERCENTAGE
-        ) {
+        if (promotion.discountType === DiscountType.PERCENTAGE) {
           if (
             discountValue.lessThan(0) ||
             discountValue.greaterThan(100)
           ) {
-            throw new HttpError(
-              400,
-              'Gia tri giam gia khong hop le',
-            );
+            throw new HttpError(400, 'Gia tri giam gia khong hop le');
           }
 
-          discountAmount = subtotal
-            .mul(discountValue)
-            .div(100);
+          discountAmount = subtotal.mul(discountValue).div(100);
         } else {
           if (discountValue.lessThan(0)) {
-            throw new HttpError(
-              400,
-              'Gia tri giam gia khong hop le',
-            );
+            throw new HttpError(400, 'Gia tri giam gia khong hop le');
           }
 
           discountAmount = discountValue;
         }
 
-        // Giới hạn mức giảm tối đa
         if (promotion.maxDiscount !== null) {
           const maxDiscount = new Prisma.Decimal(
             promotion.maxDiscount,
@@ -305,7 +247,6 @@ export async function createOrder(
           }
         }
 
-        // Không giảm vượt tiền hàng
         if (discountAmount.greaterThan(subtotal)) {
           discountAmount = subtotal;
         }
@@ -313,12 +254,7 @@ export async function createOrder(
         promotionId = promotion.id;
       }
 
-      // --------------------------------------
-      // 5. TÍNH PHÍ VÀ TỔNG TIỀN
-      // --------------------------------------
-
-      // Hiện tại nhóm chưa có chính sách phí vận chuyển.
-      // Tạm thời sử dụng miễn phí vận chuyển.
+      // 5. TÍNH TỔNG TIỀN
 
       const shippingFee = new Prisma.Decimal(0);
 
@@ -327,15 +263,10 @@ export async function createOrder(
         .add(shippingFee);
 
       if (totalAmount.lessThan(0)) {
-        throw new HttpError(
-          400,
-          'Tong tien don hang khong hop le',
-        );
+        throw new HttpError(400, 'Tong tien don hang khong hop le');
       }
 
-      // --------------------------------------
       // 6. TRỪ TỒN KHO
-      // --------------------------------------
 
       const stockSnapshots: {
         variantId: string;
@@ -384,19 +315,16 @@ export async function createOrder(
         });
       }
 
-      // --------------------------------------
-      // 7. TRẠNG THÁI THANH TOÁN
-      // --------------------------------------
+      // 7. TRẠNG THÁI THANH TOÁN BAN ĐẦU
 
       const paymentStatus =
         paymentMethod === PaymentMethod.COD
           ? PaymentStatus.UNPAID
           : PaymentStatus.PENDING;
 
-      // --------------------------------------
       // 8. TẠO ĐƠN HÀNG
-      // --------------------------------------
 
+      // Payment được tạo riêng trong payment.service.ts.
       const order = await tx.order.create({
         data: {
           userId,
@@ -420,14 +348,6 @@ export async function createOrder(
           items: {
             create: orderItems,
           },
-
-          payments: {
-            create: {
-              method: paymentMethod,
-              status: paymentStatus,
-              amount: totalAmount,
-            },
-          },
         },
 
         include: {
@@ -436,16 +356,11 @@ export async function createOrder(
         },
       });
 
-      // --------------------------------------
       // 9. GHI PHIẾU XUẤT KHO
-      // --------------------------------------
 
       await tx.inventoryDocument.create({
         data: {
-          code: taoMaPhieuKho(
-            InventoryDocumentType.ORDER_OUT,
-          ),
-
+          code: taoMaPhieuKho(InventoryDocumentType.ORDER_OUT),
           type: InventoryDocumentType.ORDER_OUT,
           status: InventoryDocumentStatus.COMPLETED,
 
@@ -470,53 +385,47 @@ export async function createOrder(
         },
       });
 
-      // --------------------------------------
       // 10. CẬP NHẬT LƯỢT SỬ DỤNG VOUCHER
-      // --------------------------------------
 
       if (promotionId) {
-        const updatedPromotion =
-          await tx.promotion.updateMany({
-            where: {
-              id: promotionId,
-              isActive: true,
-              ...(promotionCode
-                ? {
-                    OR: [
-                      { usageLimit: null },
-                      {
-                        usageCount: {
-                          lt: (
-                            await tx.promotion.findUniqueOrThrow({
-                              where: { id: promotionId },
-                              select: { usageLimit: true },
-                            })
-                          ).usageLimit ?? 2147483647,
-                        },
-                      },
-                    ],
-                  }
-                : {}),
-            },
+        const currentPromotion = await tx.promotion.findUnique({
+          where: {
+            id: promotionId,
+          },
+          select: {
+            usageLimit: true,
+          },
+        });
 
-            data: {
-              usageCount: {
-                increment: 1,
-              },
+        if (!currentPromotion) {
+          throw new HttpError(404, 'Voucher khong ton tai');
+        }
+
+        const updatedPromotion = await tx.promotion.updateMany({
+          where: {
+            id: promotionId,
+            isActive: true,
+            ...(currentPromotion.usageLimit !== null
+              ? {
+                  usageCount: {
+                    lt: currentPromotion.usageLimit,
+                  },
+                }
+              : {}),
+          },
+          data: {
+            usageCount: {
+              increment: 1,
             },
-          });
+          },
+        });
 
         if (updatedPromotion.count !== 1) {
-          throw new HttpError(
-            409,
-            'Voucher da het luot su dung',
-          );
+          throw new HttpError(409, 'Voucher da het luot su dung');
         }
       }
 
-      // --------------------------------------
       // 11. XÓA GIỎ HÀNG
-      // --------------------------------------
 
       await tx.cartItem.deleteMany({
         where: {
@@ -527,8 +436,7 @@ export async function createOrder(
       return order;
     },
     {
-      isolationLevel:
-        Prisma.TransactionIsolationLevel.Serializable,
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
     },
   );
 }
@@ -542,12 +450,10 @@ export async function getMyOrders(userId: string) {
     where: {
       userId,
     },
-
     include: {
       items: true,
       payments: true,
     },
-
     orderBy: {
       createdAt: 'desc',
     },
@@ -567,7 +473,6 @@ export async function getOrderDetail(
       id: orderId,
       userId,
     },
-
     include: {
       items: true,
       payments: true,
@@ -575,10 +480,7 @@ export async function getOrderDetail(
   });
 
   if (!order) {
-    throw new HttpError(
-      404,
-      'Khong tim thay don hang',
-    );
+    throw new HttpError(404, 'Khong tim thay don hang');
   }
 
   return order;
@@ -588,12 +490,9 @@ export async function getOrderDetail(
 // 4. ADMIN LẤY TẤT CẢ ĐƠN HÀNG
 // ==========================================
 
-export async function getAllOrders(
-  status?: OrderStatus,
-) {
+export async function getAllOrders(status?: OrderStatus) {
   return prisma.order.findMany({
     where: status ? { status } : {},
-
     include: {
       user: {
         select: {
@@ -603,11 +502,9 @@ export async function getAllOrders(
           phone: true,
         },
       },
-
       items: true,
       payments: true,
     },
-
     orderBy: {
       createdAt: 'desc',
     },
@@ -623,77 +520,124 @@ export async function updateOrderStatus(
   status: OrderStatus,
 ) {
   if (!Object.values(OrderStatus).includes(status)) {
-    throw new HttpError(
-      400,
-      'Trang thai don hang khong hop le',
-    );
+    throw new HttpError(400, 'Trang thai don hang khong hop le');
   }
 
-  if (
-    status === OrderStatus.PENDING ||
-    status === OrderStatus.CANCELLED
-  ) {
-    throw new HttpError(
-      400,
-      'Khong duoc cap nhat truc tiep sang trang thai nay',
-    );
-  }
+  const allowedTransitions: Partial<Record<OrderStatus, OrderStatus>> = {
+    [OrderStatus.PENDING]: OrderStatus.CONFIRMED,
+    [OrderStatus.CONFIRMED]: OrderStatus.PROCESSING,
+    [OrderStatus.PROCESSING]: OrderStatus.SHIPPED,
+    [OrderStatus.SHIPPED]: OrderStatus.DELIVERED,
+  };
 
-  return prisma.$transaction(async (tx) => {
-    const order = await tx.order.findUnique({
-      where: {
-        id: orderId,
-      },
-    });
+  return prisma.$transaction(
+    async (tx) => {
+      // Khóa đơn hàng để tránh xung đột với thanh toán.
+      await khoaDonHang(tx, orderId);
 
-    if (!order) {
-      throw new HttpError(
-        404,
-        'Khong tim thay don hang',
+      const order = await tx.order.findUnique({
+        where: {
+          id: orderId,
+        },
+        include: {
+          payments: true,
+        },
+      });
+
+      if (!order) {
+        throw new HttpError(404, 'Khong tim thay don hang');
+      }
+
+      if (
+        order.status === OrderStatus.CANCELLED ||
+        order.status === OrderStatus.DELIVERED
+      ) {
+        throw new HttpError(
+          400,
+          'Don hang khong the tiep tuc cap nhat',
+        );
+      }
+
+      const nextStatus = allowedTransitions[order.status];
+
+      if (!nextStatus || status !== nextStatus) {
+        throw new HttpError(
+          400,
+          'Khong the chuyen sang trang thai nay. Vui long cap nhat dung thu tu',
+        );
+      }
+
+      // Xác định đơn COD dựa trên bản ghi thanh toán.
+      const isCOD = order.payments.some(
+        (payment) => payment.method === PaymentMethod.COD,
       );
-    }
 
-    if (
-      order.status === OrderStatus.CANCELLED ||
-      order.status === OrderStatus.DELIVERED
-    ) {
-      throw new HttpError(
-        400,
-        'Don hang khong the tiep tuc cap nhat',
-      );
-    }
+      // Không xác nhận đơn VNPAY khi chưa thanh toán.
+      if (status === OrderStatus.CONFIRMED) {
+        const isPaymentValid =
+          order.paymentStatus === PaymentStatus.PAID ||
+          (isCOD && order.paymentStatus === PaymentStatus.UNPAID);
 
-    if (
-      order.paymentStatus === PaymentStatus.PENDING ||
-      order.paymentStatus === PaymentStatus.FAILED
-    ) {
+        if (!isPaymentValid) {
+          throw new HttpError(
+            400,
+            'Don hang online phai thanh toan thanh cong truoc khi xac nhan',
+          );
+        }
+      }
+
+      // Chỉ cho phép xử lý đơn đã thanh toán hoặc COD.
       if (
         status === OrderStatus.PROCESSING ||
         status === OrderStatus.SHIPPED ||
         status === OrderStatus.DELIVERED
       ) {
+        const isPaymentValid =
+          order.paymentStatus === PaymentStatus.PAID ||
+          (isCOD && order.paymentStatus === PaymentStatus.UNPAID);
+
+        if (!isPaymentValid) {
+          throw new HttpError(
+            400,
+            'Don hang chua thanh toan thanh cong',
+          );
+        }
+      }
+
+      const updated = await tx.order.updateMany({
+        where: {
+          id: orderId,
+          status: order.status,
+          paymentStatus: order.paymentStatus,
+        },
+        data: {
+          status,
+        },
+      });
+
+      if (updated.count !== 1) {
         throw new HttpError(
-          400,
-          'Don hang chua thanh toan thanh cong',
+          409,
+          'Don hang da duoc cap nhat boi yeu cau khac',
         );
       }
-    }
 
-    return tx.order.update({
-      where: {
-        id: orderId,
-      },
-
-      data: {
-        status,
-      },
-
-      include: {
-        items: true,
-        payments: true,
-      },
-    });
-  });
+      return tx.order.findUnique({
+        where: {
+          id: orderId,
+        },
+        include: {
+          items: true,
+          payments: true,
+        },
+      });
+    },
+    {
+      maxWait: 10000,
+      timeout: 20000,
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+    },
+  );
 }
 
 // ==========================================
@@ -707,26 +651,23 @@ export async function cancelOrder(
 ) {
   return prisma.$transaction(
     async (tx) => {
-      // Tìm đơn hàng
+      // Khóa đơn hàng để đồng bộ với payment.service.ts.
+      await khoaDonHang(tx, orderId);
+
       const order = await tx.order.findFirst({
         where: {
           id: orderId,
           ...(isAdmin ? {} : { userId }),
         },
-
         include: {
           items: true,
         },
       });
 
       if (!order) {
-        throw new HttpError(
-          404,
-          'Khong tim thay don hang',
-        );
+        throw new HttpError(404, 'Khong tim thay don hang');
       }
 
-      // Chỉ cho phép hủy PENDING hoặc CONFIRMED
       if (
         order.status !== OrderStatus.PENDING &&
         order.status !== OrderStatus.CONFIRMED
@@ -737,7 +678,6 @@ export async function cancelOrder(
         );
       }
 
-      // Đơn đã thanh toán phải xử lý hoàn tiền trước
       if (order.paymentStatus === PaymentStatus.PAID) {
         throw new HttpError(
           400,
@@ -745,7 +685,8 @@ export async function cancelOrder(
         );
       }
 
-      // Cập nhật trạng thái có điều kiện
+      // Cập nhật trạng thái trước.
+      // Nếu không cập nhật được thì transaction sẽ dừng.
       const updated = await tx.order.updateMany({
         where: {
           id: orderId,
@@ -755,7 +696,6 @@ export async function cancelOrder(
             not: PaymentStatus.PAID,
           },
         },
-
         data: {
           status: OrderStatus.CANCELLED,
         },
@@ -768,7 +708,8 @@ export async function cancelOrder(
         );
       }
 
-      // Hoàn tồn kho
+      // HOÀN TỒN KHO
+
       const stockSnapshots: {
         variantId: string;
         quantity: number;
@@ -785,7 +726,6 @@ export async function cancelOrder(
           where: {
             id: item.variantId,
           },
-
           select: {
             id: true,
             stock: true,
@@ -803,7 +743,6 @@ export async function cancelOrder(
           where: {
             id: item.variantId,
           },
-
           data: {
             stock: {
               increment: item.quantity,
@@ -819,14 +758,12 @@ export async function cancelOrder(
         });
       }
 
-      // Ghi phiếu hoàn kho
+      // GHI PHIẾU HOÀN KHO
+
       if (stockSnapshots.length > 0) {
         await tx.inventoryDocument.create({
           data: {
-            code: taoMaPhieuKho(
-              InventoryDocumentType.ORDER_RETURN,
-            ),
-
+            code: taoMaPhieuKho(InventoryDocumentType.ORDER_RETURN),
             type: InventoryDocumentType.ORDER_RETURN,
             status: InventoryDocumentStatus.COMPLETED,
 
@@ -852,17 +789,17 @@ export async function cancelOrder(
         });
       }
 
-      // Cập nhật thanh toán đang chờ
+      // ĐÓNG THANH TOÁN ĐANG CHỜ
+
       if (order.paymentStatus === PaymentStatus.PENDING) {
         await tx.payment.updateMany({
           where: {
             orderId,
             status: PaymentStatus.PENDING,
           },
-
           data: {
             status: PaymentStatus.FAILED,
-            failureReason: 'Don hang da bi huy',
+            failureReason: 'ORDER_CANCELLED',
           },
         });
 
@@ -870,19 +807,16 @@ export async function cancelOrder(
           where: {
             id: orderId,
           },
-
           data: {
             paymentStatus: PaymentStatus.FAILED,
           },
         });
       }
 
-      // Trả về đơn hàng sau khi hủy
       return tx.order.findUnique({
         where: {
           id: orderId,
         },
-
         include: {
           items: true,
           payments: true,
@@ -890,8 +824,9 @@ export async function cancelOrder(
       });
     },
     {
-      isolationLevel:
-        Prisma.TransactionIsolationLevel.Serializable,
+      maxWait: 10000,
+      timeout: 20000,
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
     },
   );
 }

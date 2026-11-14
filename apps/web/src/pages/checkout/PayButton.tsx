@@ -13,38 +13,70 @@ type Props = {
   disabled?: boolean;
 };
 
-/**
- * Nút thanh toán cho MỘT ĐƠN ĐÃ TẠO (orderId do module orders trả về).
- * Gọi POST /api/payments rồi chuyển khách sang VNPay, hoặc sang trang kết quả (COD/mock).
- * Bấm lại cho cùng một đơn sẽ nhận lại đúng link cũ, không tạo giao dịch trùng.
- */
-export function PayButton({ orderId, method = 'VNPAY', bankCode, label = 'Thanh toán', className = 'pay-btn', disabled }: Props) {
-  const dieuHuong = useNavigate();
-  const [dangXuLy, setDangXuLy] = useState(false);
-  const [loi, setLoi] = useState('');
+export function PayButton({
+  orderId,
+  method = 'VNPAY',
+  bankCode,
+  label = 'Thanh toán',
+  className = 'pay-btn',
+  disabled,
+}: Props) {
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  async function bam() {
-    setDangXuLy(true);
-    setLoi('');
+  async function handlePayment() {
+    if (loading || disabled) return;
+
+    setLoading(true);
+    setError('');
+
     try {
-      const tt = await paymentService.taoThanhToan({ orderId, method, bankCode });
-      if (tt.paymentUrl) {
-        window.location.assign(tt.paymentUrl); // sang trang VNPay
-        return; // giữ trạng thái "đang xử lý" cho tới khi trình duyệt chuyển trang
+      const result = await paymentService.taoThanhToan({
+        orderId,
+        method,
+        bankCode,
+      });
+
+      if (result.paymentUrl) {
+        window.location.assign(result.paymentUrl);
+        return;
       }
-      dieuHuong(`/payment/result?reference=${tt.reference}`);
-    } catch (e) {
-      setLoi((e as Error).message);
-      setDangXuLy(false);
+
+      if (result.reference) {
+        navigate(
+          `/payment/result?reference=${encodeURIComponent(result.reference)}`,
+        );
+        return;
+      }
+
+      throw new Error('Không nhận được thông tin giao dịch thanh toán.');
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Không thể khởi tạo thanh toán. Vui lòng thử lại.',
+      );
+      setLoading(false);
     }
   }
 
   return (
     <>
-      <button className={className} onClick={bam} disabled={disabled || dangXuLy}>
-        {dangXuLy ? 'Đang xử lý...' : label}
+      <button
+        type="button"
+        className={className}
+        onClick={() => void handlePayment()}
+        disabled={disabled || loading}
+      >
+        {loading ? 'Đang xử lý...' : label}
       </button>
-      {loi && <p className="pay-btn-error">{loi}</p>}
+
+      {error && (
+        <p className="pay-btn-error" role="alert">
+          {error}
+        </p>
+      )}
     </>
   );
 }
