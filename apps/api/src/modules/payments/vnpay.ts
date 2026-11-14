@@ -5,6 +5,8 @@ import { PaymentError } from "./payment.errors";
 export type VnpParams = Record<string, string>;
 
 const gatewayUrl = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
+/** true nếu link là link cổng VNPay thật (không phải cổng giả lập) */
+export const isGatewayUrl = (url: string) => url.startsWith(gatewayUrl);
 const queryUrl = "https://sandbox.vnpayment.vn/merchant_webapi/api/transaction";
 
 export function isConfigured() {

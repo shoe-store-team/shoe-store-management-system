@@ -52,6 +52,41 @@ function formatAddress(address: SavedAddress): string {
     .filter((part) => part && part.trim())
     .join(', ');
 }
+import { useEffect, useState } from "react";
+import type { FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
+
+import { cartService } from "../../services/cartService";
+import { orderService } from "../../services/orderService";
+import { paymentService } from "../../services/paymentService";
+
+import { dinhDangTien } from "../../services/request";
+
+import type { Order } from "../../types/order";
+import type { PaymentMethod, PaymentResult } from "../../types/payment";
+import { VnpayQrPayment } from "./VnpayQrPayment";
+import "./checkout.css";
+
+const PHUONG_THUC: { value: PaymentMethod; ten: string; moTa: string }[] = [
+  { value: "COD", ten: "Thanh toán khi nhận hàng", moTa: "Trả tiền mặt cho đơn vị vận chuyển khi nhận hàng" },
+  { value: "VNPAY", ten: "Thanh toán trực tuyến qua VNPay", moTa: "Thẻ ATM, thẻ quốc tế hoặc QR (môi trường Sandbox)" },
+];
+
+const TRANG_THAI_DON: Record<string, string> = {
+  PENDING: "Chờ xử lý",
+  CONFIRMED: "Đã xác nhận",
+  PROCESSING: "Đang chuẩn bị",
+  SHIPPED: "Đang giao",
+  DELIVERED: "Đã giao",
+  CANCELLED: "Đã huỷ",
+};
+const TRANG_THAI_TT: Record<string, string> = {
+  UNPAID: "Chưa thanh toán",
+  PENDING: "Đang chờ thanh toán",
+  PAID: "Đã thanh toán",
+  FAILED: "Thanh toán thất bại",
+  REFUNDED: "Đã hoàn tiền",
+};
 
 export function CheckoutPage() {
   const navigate = useNavigate();
@@ -62,9 +97,9 @@ export function CheckoutPage() {
     (location.state as { promotionCode?: string } | null)
       ?.promotionCode?.trim() ?? '';
 
-  const [gioHang, setGioHang] = useState<
-    Awaited<ReturnType<typeof cartService.layGioHang>> | null
-  >(null);
+  const [gioHang, setGioHang] = useState<Awaited<
+    ReturnType<typeof cartService.layGioHang>
+  > | null>(null);
 
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState('');
@@ -74,14 +109,15 @@ export function CheckoutPage() {
   const [shippingAddress, setShippingAddress] = useState('');
   const [note, setNote] = useState('');
 
-  const [paymentMethod, setPaymentMethod] =
-    useState<PaymentMethod>('COD');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("COD");
 
-  const [createdOrder, setCreatedOrder] =
-    useState<Order | null>(null);
+  const [createdOrder, setCreatedOrder] = useState<Order | null>(null);
 
-  const [paymentResult, setPaymentResult] =
-    useState<PaymentResult | null>(null);
+  const [paymentResult, setPaymentResult] = useState<PaymentResult | null>(
+    null,
+  );
+  // Giao dịch VNPay đang chờ quét mã QR
+  const [qrPayment, setQrPayment] = useState<PaymentResult | null>(null);
 
   // Thông tin mã giảm giá.
   const [promotion, setPromotion] =
@@ -91,8 +127,8 @@ export function CheckoutPage() {
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
+  const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
   // Tải giỏ hàng, hồ sơ và địa chỉ đã lưu.
   useEffect(() => {
@@ -130,6 +166,14 @@ export function CheckoutPage() {
         if (profile) {
           setRecipientName(profile.name || '');
           setPhone(profile.phone || '');
+        if (mounted) {
+          setGioHang(data);
+        }
+      } catch (err) {
+        if (mounted) {
+          setError(
+            err instanceof Error ? err.message : "Không thể tải giỏ hàng.",
+          );
         }
       }
 
@@ -224,7 +268,7 @@ export function CheckoutPage() {
     method: PaymentMethod,
   ) => {
     setSubmitting(true);
-    setError('');
+    setError("");
 
     try {
       const result = await paymentService.taoThanhToan({
@@ -243,24 +287,25 @@ export function CheckoutPage() {
         }
 
         if (result.paymentUrl) {
-          window.location.assign(result.paymentUrl);
+          // Hiện mã QR ngay trên trang; khách quét bằng điện thoại, trang tự cập nhật khi thanh toán xong
+          setQrPayment(result);
           return;
         }
 
         setSuccessMessage(
-          'Đơn hàng đã được tạo. Giao dịch thanh toán đang được xử lý.',
+          "Đơn hàng đã được tạo. Giao dịch thanh toán đang được xử lý.",
         );
         return;
       }
 
       setSuccessMessage(
-        'Đặt hàng thành công! Bạn sẽ thanh toán khi nhận hàng.',
+        "Cửa hàng sẽ sớm chuẩn bị đơn hàng. Bạn thanh toán tiền mặt khi nhận hàng.",
       );
     } catch (err) {
       setError(
         err instanceof Error
           ? err.message
-          : 'Không thể tạo giao dịch thanh toán.',
+          : "Không thể tạo giao dịch thanh toán.",
       );
     } finally {
       setSubmitting(false);
@@ -275,11 +320,11 @@ export function CheckoutPage() {
 
     if (submitting) return;
 
-    setError('');
-    setSuccessMessage('');
+    setError("");
+    setSuccessMessage("");
 
     if (!recipientName.trim()) {
-      setError('Vui lòng nhập họ tên người nhận.');
+      setError("Vui lòng nhập họ tên người nhận.");
       return;
     }
 
@@ -287,16 +332,18 @@ export function CheckoutPage() {
 
     if (!normalizedPhone) {
       setError('Vui lòng nhập số điện thoại.');
+    if (!/^(0|\+84)[0-9]{9,10}$/.test(phone.replace(/\s/g, ""))) {
+      setError("Số điện thoại không hợp lệ.");
       return;
     }
 
     if (!shippingAddress.trim()) {
-      setError('Vui lòng nhập địa chỉ giao hàng.');
+      setError("Vui lòng nhập địa chỉ giao hàng.");
       return;
     }
 
     if (!gioHang || gioHang.items.length === 0) {
-      setError('Giỏ hàng đang trống.');
+      setError("Giỏ hàng đang trống.");
       return;
     }
 
@@ -328,11 +375,7 @@ export function CheckoutPage() {
 
       await createPayment(order, paymentMethod);
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'Không thể tạo đơn hàng.',
-      );
+      setError(err instanceof Error ? err.message : "Không thể tạo đơn hàng.");
     } finally {
       setSubmitting(false);
     }
@@ -355,12 +398,25 @@ export function CheckoutPage() {
   }
 
   // Màn hình kết quả sau khi đặt hàng.
+  /* ---------------------------------------------------------------- quét mã QR VNPay */
+  if (qrPayment) {
+    return (
+      <div className="checkout-page">
+        <VnpayQrPayment payment={qrPayment} onFinished={setPaymentResult} />
+      </div>
+    );
+  }
+
+  /* ---------------------------------------------------------------- đã tạo đơn */
   if (createdOrder) {
     const isPaid =
-      paymentResult?.status === 'PAID' ||
-      paymentResult?.orderPaymentStatus === 'PAID';
+      paymentResult?.status === "PAID" ||
+      paymentResult?.orderPaymentStatus === "PAID";
 
-    const isCOD = paymentMethod === 'COD';
+    const isCOD = paymentMethod === "COD";
+    const ok = Boolean(paymentResult) && !error;
+    const trangThaiDon = paymentResult?.orderStatus ?? createdOrder.status;
+    const trangThaiTT = paymentResult?.orderPaymentStatus ?? createdOrder.paymentStatus;
 
     return (
       <div className="co-page">
@@ -385,7 +441,7 @@ export function CheckoutPage() {
                 : 'Đơn hàng đã được tạo!'}
           </h1>
 
-          {successMessage && <p>{successMessage}</p>}
+          {successMessage && <p className="checkout-muted">{successMessage}</p>}
 
           {error && (
             <div className="voucher-error">{error}</div>
@@ -502,6 +558,7 @@ export function CheckoutPage() {
     );
   }
 
+  /* ---------------------------------------------------------------- form thanh toán */
   return (
     <div className="co-page">
       <div className="checkout-head">
@@ -522,6 +579,23 @@ export function CheckoutPage() {
             type="button"
             onClick={() => navigate('/')}
           >
+    <div className="checkout-page">
+      <button type="button" className="checkout-back" onClick={() => navigate("/cart")}>
+        ← Quay lại giỏ hàng
+      </button>
+
+      <div className="checkout-head">
+        <p className="checkout-kicker">BƯỚC CUỐI CÙNG</p>
+        <h1>Thanh toán đơn hàng</h1>
+      </div>
+
+      {error && <div className="checkout-error">{error}</div>}
+
+      {!gioHang || gioHang.items.length === 0 ? (
+        <div className="checkout-empty">
+          <p>Giỏ hàng của bạn đang trống.</p>
+
+          <button type="button" className="checkout-btn primary" onClick={() => navigate("/")}>
             Tiếp tục mua sắm
           </button>
         </div>
@@ -697,7 +771,15 @@ export function CheckoutPage() {
                     {dinhDangTien(Number(item.lineTotal))}
                   </strong>
                 </div>
-              ))}
+                <div className="checkout-item-info">
+                  <strong>{item.productName}</strong>
+                  <small>
+                    Size {item.size} · {item.color} · SL {item.quantity}
+                  </small>
+                </div>
+                <div className="checkout-item-price">{dinhDangTien(Number(item.lineTotal))}</div>
+              </div>
+            ))}
 
               <div className="sum-row">
                 <span>Tạm tính</span>

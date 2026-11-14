@@ -1,0 +1,42 @@
+/* Màn hình thanh toán VNPay bằng mã QR (M6) — cùng phong cách SoleDay với trang Thanh toán */
+.vq-card { max-width: 480px; margin: 20px auto 0; border: 1px solid #dfded8; background: #fff; padding: 36px 32px; text-align: center; color: #20202a; font-family: 'Be Vietnam Pro', sans-serif; }
+.vq-card * { box-sizing: border-box; }
+.vq-card.vq-wide { max-width: 860px; text-align: left; }
+.vq-kicker { color: #9a6f55; font-size: 11px; font-weight: 700; letter-spacing: 2px; margin: 0 0 8px; }
+.vq-card h2 { font-size: 22px; letter-spacing: -.5px; margin: 0 0 6px; }
+.vq-demo { display: inline-block; background: #fff2e1; color: #a65e19; font-size: 11px; font-weight: 700; letter-spacing: .5px; padding: 5px 9px; margin: 10px 0 0; }
+.vq-muted { color: #77766f; font-size: 13px; line-height: 1.7; margin: 0; }
+.vq-icon { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; margin: 0 auto 16px; font-size: 22px; font-style: normal; }
+.vq-icon.ok { background: #e7f7f0; color: #168161; }
+.vq-icon.fail { background: #f9ecee; color: #a55e62; }
+
+.vq-body { display: grid; grid-template-columns: 280px 1fr; gap: 36px; margin-top: 26px; align-items: start; }
+.vq-qr { border: 1px solid #e6e5df; background: #fff; padding: 18px; text-align: center; }
+.vq-qr-svg svg { display: block; margin: 0 auto; width: 232px; height: 232px; }
+.vq-qr-loading { width: 232px; height: 232px; margin: 0 auto; display: grid; place-items: center; color: #99988f; font-size: 12px; background: #f5f3ee; }
+.vq-amount { font-size: 22px; font-weight: 700; margin-top: 14px; }
+.vq-timer { color: #77766f; font-size: 12px; margin-top: 4px; }
+.vq-timer.warn { color: #a55e62; }
+
+.vq-steps ol { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.8; color: #3a3934; }
+.vq-steps li { margin-bottom: 6px; }
+.vq-waiting { display: flex; align-items: center; gap: 8px; margin: 18px 0 6px; font-size: 13px; font-weight: 600; color: #5573b1; }
+.vq-waiting i { width: 8px; height: 8px; border-radius: 50%; background: #6e90d0; animation: vq-pulse 1.2s ease-in-out infinite; }
+@keyframes vq-pulse { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
+.vq-note { color: #a65e19; font-size: 12px; margin: 4px 0 0; }
+.vq-hint { color: #99988f; font-size: 11px; line-height: 1.6; margin: 14px 0 0; }
+
+.vq-facts { background: #f5f3ee; padding: 12px 16px; margin: 20px 0; text-align: left; }
+.vq-facts div { display: flex; justify-content: space-between; gap: 16px; padding: 6px 0; font-size: 13px; }
+.vq-facts span { color: #99988f; }
+.vq-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.vq-actions.left { justify-content: flex-start; }
+.vq-btn { font: inherit; cursor: pointer; border: 1px solid #deddd7; background: #fff; color: #20202a; padding: 11px 16px; font-size: 13px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; }
+.vq-btn.primary { background: #191917; color: #fff; border-color: #191917; }
+.vq-btn.primary:hover:not(:disabled) { background: #6f5a43; border-color: #6f5a43; }
+.vq-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+@media (max-width: 760px) {
+  .vq-body { grid-template-columns: 1fr; }
+  .vq-qr { max-width: 280px; margin: 0 auto; }
+}
