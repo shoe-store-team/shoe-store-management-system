@@ -6,8 +6,13 @@ import {
 import { Router, Request, Response } from "express";
 import { prisma } from "../../config/prisma";
 import { InventoryService } from "./inventory.service";
+import {
+  authenticateToken,
+  authorizeRoles,
+} from "../../middlewares/auth.middleware";
 
 const router = Router();
+router.use(authenticateToken, authorizeRoles("ADMIN", "WAREHOUSE_STAFF"));
 const inventoryService = new InventoryService(prisma);
 const supportedTypes: InventoryDocumentType[] = [
   InventoryDocumentType.IMPORT,
@@ -229,13 +234,12 @@ router.get("/history", async (_req: Request, res: Response) => {
 });
 
 router.post("/documents", async (req: Request, res: Response) => {
-  const { type, createdById, reason, note } = req.body ?? {};
+  const { type, reason, note } = req.body ?? {};
+  const createdById = req.authUser!.id;
   const items = parseItems(req.body?.items);
   if (
     typeof type !== "string" ||
     !supportedTypes.includes(type as InventoryDocumentType) ||
-    typeof createdById !== "string" ||
-    createdById.trim() === "" ||
     (reason !== undefined && typeof reason !== "string") ||
     (note !== undefined && typeof note !== "string") ||
     !items ||
@@ -401,13 +405,9 @@ router.put("/documents/:id/items", async (req: Request, res: Response) => {
 });
 
 router.post("/documents/:id/confirm", async (req: Request, res: Response) => {
-  const { confirmedById } = req.body ?? {};
+  const confirmedById = req.authUser!.id;
   const documentId = req.params.id;
-  if (
-    typeof confirmedById !== "string" ||
-    confirmedById.trim() === "" ||
-    typeof documentId !== "string"
-  ) {
+  if (typeof documentId !== "string") {
     return res.status(400).json({ message: "Thiếu người xác nhận phiếu kho." });
   }
 
@@ -458,17 +458,18 @@ router.post("/documents/:id/cancel", async (req: Request, res: Response) => {
 // Trừ tồn kho theo đơn hàng
 router.post("/orders/:orderId/deduct", async (req: Request, res: Response) => {
   const { orderId } = req.params;
-  const { actorId, reason, items } = req.body ?? {};
+  const { reason, items } = req.body ?? {};
+const actorId = req.authUser!.id;
   const parsedItems = parseItems(items);
 
   if (
     typeof orderId !== "string" ||
     !orderId.trim() ||
-    typeof actorId !== "string" ||
-    !actorId.trim() ||
     !parsedItems
   ) {
-    return res.status(400).json({ message: "Dữ liệu trừ kho đơn hàng không hợp lệ." });
+    return res
+      .status(400)
+      .json({ message: "Dữ liệu trừ kho đơn hàng không hợp lệ." });
   }
 
   try {
@@ -490,7 +491,8 @@ router.post("/orders/:orderId/deduct", async (req: Request, res: Response) => {
 // Hoàn tồn kho khi đơn hàng bị hủy hoặc thanh toán thất bại/hết hạn
 router.post("/orders/:orderId/restore", async (req: Request, res: Response) => {
   const { orderId } = req.params;
-  const { actorId, reason } = req.body ?? {};
+  const { reason } = req.body ?? {};
+const actorId = req.authUser!.id;
 
   if (typeof orderId !== "string" || !orderId.trim()) {
     return res.status(400).json({ message: "Mã đơn hàng không hợp lệ." });
@@ -499,7 +501,7 @@ router.post("/orders/:orderId/restore", async (req: Request, res: Response) => {
   try {
     const result = await inventoryService.restoreStockForOrder({
       orderId,
-      actorId: typeof actorId === "string" ? actorId : undefined,
+      actorId,
       reason: typeof reason === "string" ? reason : undefined,
     });
     return res.json(result);

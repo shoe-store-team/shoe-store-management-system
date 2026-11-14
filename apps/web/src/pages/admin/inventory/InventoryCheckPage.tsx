@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import "./InventoryCheckPage.css";
+import { authStore } from "../../../stores/authStore";
 
 const API_URL = "http://localhost:3000/api/inventory";
 
@@ -11,12 +12,12 @@ type Variant = {
   stock: number;
   product: { name: string };
 };
-type Operator = {
-  id: string;
-  name: string | null;
-  email: string;
-  role: string;
-};
+// type Operator = {
+//   id: string;
+//   name: string | null;
+//   email: string;
+//   role: string;
+// };
 type Line = { variantId: string; countedStock: number };
 type Document = { id: string; code: string };
 type Discrepancy = {
@@ -34,10 +35,22 @@ type AuditResult = {
 };
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_URL}${path}`, init);
+  const token = authStore.getToken();
+
+  const response = await fetch(`${API_URL}${path}`, {
+    ...init,
+    headers: {
+      ...init?.headers,
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
   const result = await response.json();
-  if (!response.ok)
+
+  if (!response.ok) {
     throw new Error(result.message || "Yêu cầu không thành công.");
+  }
+
   return result;
 }
 
@@ -47,10 +60,10 @@ function variantLabel(variant: Variant) {
 
 export function InventoryCheckPage() {
   const [variants, setVariants] = useState<Variant[]>([]);
-  const [operators, setOperators] = useState<Operator[]>([]);
+
   const [lines, setLines] = useState<Line[]>([]);
   const [selectedVariantId, setSelectedVariantId] = useState("");
-  const [operatorId, setOperatorId] = useState("");
+
   const [reason, setReason] = useState("");
   const [note, setNote] = useState("");
   const [draft, setDraft] = useState<Document | null>(null);
@@ -65,15 +78,10 @@ export function InventoryCheckPage() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    Promise.all([
-      request<Variant[]>("/variants"),
-      request<Operator[]>("/operators"),
-    ])
-      .then(([availableVariants, availableOperators]) => {
+    request<Variant[]>("/variants")
+      .then((availableVariants) => {
         setVariants(availableVariants);
-        setOperators(availableOperators);
         setSelectedVariantId(availableVariants[0]?.id ?? "");
-        setOperatorId(availableOperators[0]?.id ?? "");
       })
       .catch((cause: unknown) =>
         setError(
@@ -106,8 +114,8 @@ export function InventoryCheckPage() {
     event.preventDefault();
     setError("");
     setMessage("");
-    if (!operatorId || lines.length === 0) {
-      setError("Hãy chọn người lập phiếu và thêm ít nhất một biến thể.");
+    if (lines.length === 0) {
+      setError("Hãy thêm ít nhất một biến thể để kiểm kê.");
       return;
     }
 
@@ -122,7 +130,7 @@ export function InventoryCheckPage() {
         await request(`/documents/${pendingAdjustment.id}/confirm`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ confirmedById: operatorId }),
+          body: JSON.stringify({}),
         });
         setDraft(null);
         setPendingAdjustment(null);
@@ -145,7 +153,6 @@ export function InventoryCheckPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             type: "COUNT",
-            createdById: operatorId,
             reason: reason || "Kiểm kê tồn kho",
             note,
             items: lines,
@@ -167,7 +174,7 @@ export function InventoryCheckPage() {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ confirmedById: operatorId }),
+       body: JSON.stringify({}),
         },
       );
       if (result.type === "ADJUSTMENT_REQUIRED" && result.adjustmentDocument) {
@@ -255,10 +262,13 @@ export function InventoryCheckPage() {
           <p className="inv-eyebrow">INVENTORY MANAGEMENT · AUDIT</p>
           <h2>Kiểm kê tồn kho</h2>
           <p>
-            Nhập số lượng đếm thực tế theo từng size/màu; hệ thống tự động đối chiếu và sinh phiếu điều chỉnh khi lệch.
+            Nhập số lượng đếm thực tế theo từng size/màu; hệ thống tự động đối
+            chiếu và sinh phiếu điều chỉnh khi lệch.
           </p>
         </div>
-        <span className={`inv-header-badge ${draft || pendingAdjustment ? "is-draft" : ""}`}>
+        <span
+          className={`inv-header-badge ${draft || pendingAdjustment ? "is-draft" : ""}`}
+        >
           {pendingAdjustment
             ? `● Chờ xác nhận ĐC: ${pendingAdjustment.code}`
             : draft
@@ -294,7 +304,9 @@ export function InventoryCheckPage() {
           <span className="inv-stat-icon sand">◇</span>
           <small>DÒNG ĐANG KIỂM KÊ</small>
           <strong>{lines.length}</strong>
-          <em>{mismatchCount > 0 ? `${mismatchCount} dòng lệch` : "Khớp tạm thời"}</em>
+          <em>
+            {mismatchCount > 0 ? `${mismatchCount} dòng lệch` : "Khớp tạm thời"}
+          </em>
         </article>
         <article className="inv-stat-card">
           <span className="inv-stat-icon rose">!</span>
@@ -324,7 +336,8 @@ export function InventoryCheckPage() {
             <div>
               <h3>Chênh lệch kiểm kê — Phiếu {pendingAdjustment.code}</h3>
               <p>
-                Hệ thống chưa thay đổi tồn kho. Kiểm tra hoặc chỉnh số tồn đề xuất, sau đó xác nhận phiếu để áp dụng.
+                Hệ thống chưa thay đổi tồn kho. Kiểm tra hoặc chỉnh số tồn đề
+                xuất, sau đó xác nhận phiếu để áp dụng.
               </p>
             </div>
           </div>
@@ -411,27 +424,14 @@ export function InventoryCheckPage() {
           <div className="inv-section-title">
             <div>
               <h3>Thông tin biên bản kiểm kê</h3>
-              <p>Chọn nhân viên phụ trách và các biến thể cần đối chiếu số liệu thực tế.</p>
+              <p>
+                Chọn nhân viên phụ trách và các biến thể cần đối chiếu số liệu
+                thực tế.
+              </p>
             </div>
           </div>
 
           <div className="hang-form">
-            <label>
-              Người kiểm kê / xác nhận
-              <select
-                value={operatorId}
-                onChange={(event) => setOperatorId(event.target.value)}
-                required
-                disabled={Boolean(pendingAdjustment)}
-              >
-                <option value="">Chọn nhân viên</option>
-                {operators.map((operator) => (
-                  <option key={operator.id} value={operator.id}>
-                    {operator.name || operator.email} ({operator.role})
-                  </option>
-                ))}
-              </select>
-            </label>
             <label>
               Lý do kiểm kê
               <input
@@ -452,11 +452,7 @@ export function InventoryCheckPage() {
             </label>
           </div>
 
-          {operators.length === 0 && (
-            <p className="thong-bao-loi">
-              Chưa có tài khoản ADMIN hoặc WAREHOUSE_STAFF đang hoạt động.
-            </p>
-          )}
+          
 
           <div className="inv-picker-box">
             <label>
@@ -514,7 +510,9 @@ export function InventoryCheckPage() {
                         <div className="inv-variant-cell">
                           <strong>{variant.product.name}</strong>
                           <span className="inv-variant-meta">
-                            <span className="inv-chip">Size {variant.size}</span>
+                            <span className="inv-chip">
+                              Size {variant.size}
+                            </span>
                             <span className="inv-chip">{variant.color}</span>
                           </span>
                         </div>
@@ -579,7 +577,8 @@ export function InventoryCheckPage() {
                 {lines.length === 0 && (
                   <tr>
                     <td className="khong-co-du-lieu" colSpan={5}>
-                      Chưa có sản phẩm trong phiếu kiểm kê. Hãy chọn biến thể và bấm "Thêm sản phẩm".
+                      Chưa có sản phẩm trong phiếu kiểm kê. Hãy chọn biến thể và
+                      bấm "Thêm sản phẩm".
                     </td>
                   </tr>
                 )}
@@ -590,7 +589,7 @@ export function InventoryCheckPage() {
           <div className="inv-footer-bar">
             <button
               type="submit"
-              disabled={saving || !operatorId || !lines.length}
+              disabled={saving || !lines.length}
             >
               {saving
                 ? "Đang xử lý..."
@@ -623,7 +622,8 @@ export function InventoryCheckPage() {
       )}
 
       <p className="inv-footnote">
-        Shoe Store Admin · Dữ liệu kho đồng bộ theo thời gian thực với ProductVariant.
+        Shoe Store Admin · Dữ liệu kho đồng bộ theo thời gian thực với
+        ProductVariant.
       </p>
     </section>
   );

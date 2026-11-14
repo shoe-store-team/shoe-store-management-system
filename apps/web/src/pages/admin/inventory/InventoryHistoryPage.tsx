@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import "./InventoryHistoryPage.css";
+import { authStore } from "../../../stores/authStore";
 
 const API_URL = "http://localhost:3000/api/inventory";
 
@@ -41,10 +42,20 @@ const typeLabels: Record<string, string> = {
 };
 
 async function request<T>(path: string): Promise<T> {
-  const response = await fetch(`${API_URL}${path}`);
+  const token = authStore.getToken();
+
+  const response = await fetch(`${API_URL}${path}`, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
   const result = await response.json();
-  if (!response.ok)
+
+  if (!response.ok) {
     throw new Error(result.message || "Yêu cầu không thành công.");
+  }
+
   return result;
 }
 

@@ -7,12 +7,10 @@ export default defineConfig([
   globalIgnores(["dist", "node_modules", "src/generated"]),
   {
     files: ["src/**/*.ts"],
-    extends: [
-      js.configs.recommended,
-      tseslint.configs.recommended,
-    ],
+    extends: [js.configs.recommended, tseslint.configs.recommended],
     languageOptions: {
       globals: globals.node,
     },
+    files: ["src", "src/**/*.ts", "src/**/*.tsx"],
   },
 ]);

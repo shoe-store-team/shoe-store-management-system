@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { cartService } from '../../services/cartService';
 import { promotionService } from '../../services/promotionService';
 import { dinhDangTien } from '../../services/request';
@@ -8,6 +8,7 @@ import type { KetQuaMaGiam } from '../../types/promotion';
 import './CartPage.css';
 
 export function CartPage() {
+  const dieuHuong = useNavigate();
   const [gio, setGio] = useState<GioHang | null>(null);
   const [loi, setLoi] = useState('');
   const [ma, setMa] = useState('');
@@ -180,8 +181,12 @@ export function CartPage() {
             </dl>
             <p className="gh-ghi-chu">Số tiền cuối cùng sẽ được hệ thống tính lại khi đặt hàng.</p>
 
-            {/* Người 4 nối trang thanh toán ở đây (gửi kèm mã giảm giá đang áp dụng) */}
-            <button type="button" className="gh-nut gh-nut--chinh gh-nut--lon" disabled={khongThanhToanDuoc}>
+            <button
+              type="button"
+              className="gh-nut gh-nut--chinh gh-nut--lon"
+              disabled={khongThanhToanDuoc}
+              onClick={() => dieuHuong('/checkout', { state: { promotionCode: giam?.code } })}
+            >
               Tiến hành thanh toán
             </button>
             {coSanPhamLoi && <p className="gh-nhac">Vui lòng xóa hoặc điều chỉnh sản phẩm có cảnh báo để thanh toán.</p>}
