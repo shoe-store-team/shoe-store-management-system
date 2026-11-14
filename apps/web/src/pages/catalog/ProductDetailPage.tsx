@@ -1,36 +1,40 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { cartService } from '../../services/cartService';
-import { productService } from '../../services/productService';
-import { dinhDangTien } from '../../services/request';
-import type { ChiTietSanPham } from '../../types/cart';
-import './ProductDetailPage.css';
+import { useEffect, useMemo, useState } from "react";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { cartService } from "../../services/cartService";
+import { productService } from "../../services/productService";
+import { dinhDangTien } from "../../services/request";
+import type { ChiTietSanPham } from "../../types/cart";
+import "./ProductDetailPage.css";
+import { useAuth } from "../../stores/authStore";
 
 // Màu hiển thị cho các tên màu thường gặp; màu lạ sẽ dùng nền xám.
 const MAU_HIEN_THI: Record<string, string> = {
-  black: '#1c1c1c',
-  white: '#ffffff',
-  red: '#d63a3a',
-  blue: '#2f5fd0',
-  green: '#2f8f4e',
-  gray: '#9ca3af',
-  grey: '#9ca3af',
-  brown: '#7a4b2a',
-  yellow: '#eab308',
-  pink: '#ec7fa9',
-  orange: '#f08a24',
-  navy: '#1f2a52',
-  beige: '#d9c7a3',
+  black: "#1c1c1c",
+  white: "#ffffff",
+  red: "#d63a3a",
+  blue: "#2f5fd0",
+  green: "#2f8f4e",
+  gray: "#9ca3af",
+  grey: "#9ca3af",
+  brown: "#7a4b2a",
+  yellow: "#eab308",
+  pink: "#ec7fa9",
+  orange: "#f08a24",
+  navy: "#1f2a52",
+  beige: "#d9c7a3",
 };
 
 const SO_LUONG_SAP_HET = 5;
 
 export function ProductDetailPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { isAuthenticated } = useAuth();
   const [sp, setSp] = useState<ChiTietSanPham | null>(null);
-  const [loi, setLoi] = useState('');
-  const [thongBao, setThongBao] = useState('');
-  const [mau, setMau] = useState('');
+  const [loi, setLoi] = useState("");
+  const [thongBao, setThongBao] = useState("");
+  const [mau, setMau] = useState("");
   const [size, setSize] = useState<number | null>(null);
   const [soLuong, setSoLuong] = useState(1);
   const [dangThem, setDangThem] = useState(false);
@@ -41,28 +45,34 @@ export function ProductDetailPage() {
       .layChiTiet(id)
       .then((data) => {
         setSp(data);
-        setMau(data.variants[0]?.color ?? '');
+        setMau(data.variants[0]?.color ?? "");
       })
       .catch((e: Error) => setLoi(e.message));
   }, [id]);
 
-  const cacMau = useMemo(() => [...new Set(sp?.variants.map((v) => v.color) ?? [])], [sp]);
-  const cacSize = useMemo(() => sp?.variants.filter((v) => v.color === mau) ?? [], [sp, mau]);
+  const cacMau = useMemo(
+    () => [...new Set(sp?.variants.map((v) => v.color) ?? [])],
+    [sp],
+  );
+  const cacSize = useMemo(
+    () => sp?.variants.filter((v) => v.color === mau) ?? [],
+    [sp, mau],
+  );
   const bienThe = cacSize.find((v) => v.size === size) ?? null;
 
   const chonMau = (m: string) => {
     setMau(m);
     setSize(null);
     setSoLuong(1);
-    setThongBao('');
-    setLoi('');
+    setThongBao("");
+    setLoi("");
   };
 
   const chonSize = (s: number, tonKho: number) => {
     setSize(s);
     setSoLuong((q) => Math.min(q, tonKho));
-    setThongBao('');
-    setLoi('');
+    setThongBao("");
+    setLoi("");
   };
 
   const doiSoLuong = (giaTri: number) => {
@@ -71,13 +81,24 @@ export function ProductDetailPage() {
   };
 
   const themVaoGio = async () => {
+    if (!isAuthenticated) {
+      navigate("/login", {
+        state: {
+          from: location.pathname + location.search,
+        },
+      });
+      return;
+    }
+
     if (!bienThe || dangThem) return;
-    setLoi('');
-    setThongBao('');
+
+    setLoi("");
+    setThongBao("");
     setDangThem(true);
+
     try {
       await cartService.them(bienThe.id, soLuong);
-      setThongBao('Đã thêm vào giỏ hàng');
+      setThongBao("Đã thêm vào giỏ hàng");
     } catch (e) {
       setLoi((e as Error).message);
     } finally {
@@ -88,14 +109,19 @@ export function ProductDetailPage() {
   if (!sp) {
     return (
       <div className="pd-wrap">
-        {loi ? <div className="pd-alert pd-alert--loi">{loi}</div> : <div className="pd-dang-tai">Đang tải sản phẩm...</div>}
+        {loi ? (
+          <div className="pd-alert pd-alert--loi">{loi}</div>
+        ) : (
+          <div className="pd-dang-tai">Đang tải sản phẩm...</div>
+        )}
       </div>
     );
   }
 
   const gia = bienThe?.price ?? sp.basePrice;
   const hetHang = bienThe !== null && bienThe.stock === 0;
-  const sapHet = bienThe !== null && bienThe.stock > 0 && bienThe.stock <= SO_LUONG_SAP_HET;
+  const sapHet =
+    bienThe !== null && bienThe.stock > 0 && bienThe.stock <= SO_LUONG_SAP_HET;
   const khongThem = !bienThe || hetHang || dangThem;
 
   return (
@@ -114,11 +140,17 @@ export function ProductDetailPage() {
 
       <div className="pd-grid">
         <div className="pd-anh">
-          {sp.imageUrl ? <img src={sp.imageUrl} alt={sp.name} /> : <div className="pd-anh__trong">Chưa có ảnh</div>}
+          {sp.imageUrl ? (
+            <img src={sp.imageUrl} alt={sp.name} />
+          ) : (
+            <div className="pd-anh__trong">Chưa có ảnh</div>
+          )}
         </div>
 
         <div className="pd-thong-tin">
-          {sp.category && <span className="pd-danh-muc">{sp.category.name}</span>}
+          {sp.category && (
+            <span className="pd-danh-muc">{sp.category.name}</span>
+          )}
           <h1 className="pd-ten">{sp.name}</h1>
           <div className="pd-gia">{dinhDangTien(gia)}</div>
           {sp.description && <p className="pd-mo-ta">{sp.description}</p>}
@@ -132,11 +164,16 @@ export function ProductDetailPage() {
                 <button
                   key={m}
                   type="button"
-                  className={`pd-chip pd-chip--mau${m === mau ? ' is-chon' : ''}`}
+                  className={`pd-chip pd-chip--mau${m === mau ? " is-chon" : ""}`}
                   onClick={() => chonMau(m)}
                   aria-pressed={m === mau}
                 >
-                  <span className="pd-cham-mau" style={{ background: MAU_HIEN_THI[m.toLowerCase()] ?? '#d1d5db' }} />
+                  <span
+                    className="pd-cham-mau"
+                    style={{
+                      background: MAU_HIEN_THI[m.toLowerCase()] ?? "#d1d5db",
+                    }}
+                  />
                   {m}
                 </button>
               ))}
@@ -145,35 +182,53 @@ export function ProductDetailPage() {
 
           <div className="pd-nhom">
             <div className="pd-nhom__tieu-de">
-              Size {size !== null && <span className="pd-nhom__gia-tri">{size}</span>}
+              Size{" "}
+              {size !== null && (
+                <span className="pd-nhom__gia-tri">{size}</span>
+              )}
             </div>
             <div className="pd-chips">
               {cacSize.map((v) => (
                 <button
                   key={v.id}
                   type="button"
-                  className={`pd-chip pd-chip--size${v.size === size ? ' is-chon' : ''}${v.stock === 0 ? ' is-het' : ''}`}
+                  className={`pd-chip pd-chip--size${v.size === size ? " is-chon" : ""}${v.stock === 0 ? " is-het" : ""}`}
                   disabled={v.stock === 0}
                   onClick={() => chonSize(v.size, v.stock)}
                   aria-pressed={v.size === size}
-                  title={v.stock === 0 ? 'Hết hàng' : undefined}
+                  title={v.stock === 0 ? "Hết hàng" : undefined}
                 >
                   {v.size}
                 </button>
               ))}
             </div>
             <div className="pd-ton-kho" aria-live="polite">
-              {!bienThe && <span className="pd-ton-kho--nhac">Vui lòng chọn size</span>}
+              {!bienThe && (
+                <span className="pd-ton-kho--nhac">Vui lòng chọn size</span>
+              )}
               {hetHang && <span className="pd-ton-kho--het">Hết hàng</span>}
-              {sapHet && <span className="pd-ton-kho--sap-het">Chỉ còn {bienThe.stock} sản phẩm</span>}
-              {bienThe && !hetHang && !sapHet && <span className="pd-ton-kho--con">Còn {bienThe.stock} sản phẩm</span>}
+              {sapHet && (
+                <span className="pd-ton-kho--sap-het">
+                  Chỉ còn {bienThe.stock} sản phẩm
+                </span>
+              )}
+              {bienThe && !hetHang && !sapHet && (
+                <span className="pd-ton-kho--con">
+                  Còn {bienThe.stock} sản phẩm
+                </span>
+              )}
             </div>
           </div>
 
           <div className="pd-nhom">
             <div className="pd-nhom__tieu-de">Số lượng</div>
             <div className="pd-so-luong">
-              <button type="button" onClick={() => doiSoLuong(soLuong - 1)} disabled={!bienThe || soLuong <= 1} aria-label="Giảm số lượng">
+              <button
+                type="button"
+                onClick={() => doiSoLuong(soLuong - 1)}
+                disabled={!bienThe || soLuong <= 1}
+                aria-label="Giảm số lượng"
+              >
                 −
               </button>
               <input
@@ -185,14 +240,30 @@ export function ProductDetailPage() {
                 onChange={(e) => doiSoLuong(Number(e.target.value))}
                 aria-label="Số lượng"
               />
-              <button type="button" onClick={() => doiSoLuong(soLuong + 1)} disabled={!bienThe || soLuong >= (bienThe?.stock ?? 1)} aria-label="Tăng số lượng">
+              <button
+                type="button"
+                onClick={() => doiSoLuong(soLuong + 1)}
+                disabled={!bienThe || soLuong >= (bienThe?.stock ?? 1)}
+                aria-label="Tăng số lượng"
+              >
                 +
               </button>
             </div>
           </div>
 
-          <button type="button" className="pd-nut-them" disabled={khongThem} onClick={themVaoGio}>
-            {dangThem ? 'Đang thêm...' : hetHang ? 'Hết hàng' : !bienThe ? 'Chọn size để thêm vào giỏ' : 'Thêm vào giỏ'}
+          <button
+            type="button"
+            className="pd-nut-them"
+            disabled={khongThem}
+            onClick={themVaoGio}
+          >
+            {dangThem
+              ? "Đang thêm..."
+              : hetHang
+                ? "Hết hàng"
+                : !bienThe
+                  ? "Chọn size để thêm vào giỏ"
+                  : "Thêm vào giỏ"}
           </button>
 
           {thongBao && (

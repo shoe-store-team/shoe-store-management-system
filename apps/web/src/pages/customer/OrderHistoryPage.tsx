@@ -1,9 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { orderService } from '../../services/orderService';
 import { dinhDangTien } from '../../services/request';
-import type { Order, OrderStatus } from '../../types/order';
+import type {
+  Order,
+  OrderStatus,
+  PaymentStatus,
+} from '../../types/order';
 
-const trangThaiDonHang: Record<OrderStatus, string> = {
+const orderStatusLabels: Record<OrderStatus, string> = {
   PENDING: 'Chờ xác nhận',
   CONFIRMED: 'Đã xác nhận',
   PROCESSING: 'Đang xử lý',
@@ -12,167 +16,221 @@ const trangThaiDonHang: Record<OrderStatus, string> = {
   CANCELLED: 'Đã hủy',
 };
 
-export function OrderHistoryPage() {
-  const [donHang, setDonHang] = useState<Order[]>([]);
-  const [dangTai, setDangTai] = useState(true);
-  const [loi, setLoi] = useState('');
-  const [dangHuy, setDangHuy] = useState<string | null>(null);
+const paymentStatusLabels: Record<PaymentStatus, string> = {
+  UNPAID: 'Chưa thanh toán',
+  PENDING: 'Chờ thanh toán',
+  PAID: 'Đã thanh toán',
+  FAILED: 'Thanh toán thất bại',
+  REFUNDED: 'Đã hoàn tiền',
+};
 
-  useEffect(() => {
-    let cancelled = false;
+const canCancelOrder = (order: Order): boolean => {
+  const canCancelStatus =
+    order.status === 'PENDING' ||
+    order.status === 'CONFIRMED';
 
-    const taiLichSu = async () => {
-      try {
-        const data = await orderService.layLichSu();
+  return canCancelStatus && order.paymentStatus !== 'PAID';
+};
 
-        if (!cancelled) {
-          setDonHang(data);
-          setLoi('');
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setLoi((error as Error).message || 'Không thể tải lịch sử đơn hàng.');
-        }
-      } finally {
-        if (!cancelled) {
-          setDangTai(false);
-        }
-      }
-    };
+export function Page() {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [cancelingId, setCancelingId] = useState<string | null>(null);
+  const [error, setError] = useState('');
 
-    void taiLichSu();
-
-    return () => {
-      cancelled = true;
-    };
+  const loadOrders = useCallback(async () => {
+    try {
+      setError('');
+      const data = await orderService.layLichSu();
+      setOrders(data);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Không thể tải lịch sử đơn hàng.',
+      );
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const huyDonHang = async (id: string) => {
-    const dongY = window.confirm('Bạn có chắc chắn muốn hủy đơn hàng này không?');
+  useEffect(() => {
+    void loadOrders();
+  }, [loadOrders]);
 
-    if (!dongY) return;
+  const handleCancelOrder = async (order: Order) => {
+    const confirmed = window.confirm(
+      `Bạn có chắc chắn muốn hủy đơn hàng ${order.id.slice(0, 8)} không?`,
+    );
+
+    if (!confirmed) return;
 
     try {
-      setDangHuy(id);
-      setLoi('');
+      setCancelingId(order.id);
+      setError('');
 
-      const donHangMoi = await orderService.huyDonHang(id);
+      const updatedOrder = await orderService.huyDonHang(order.id);
 
-      setDonHang((danhSach) =>
-        danhSach.map((item) => (item.id === id ? donHangMoi : item)),
+      setOrders((currentOrders) =>
+        currentOrders.map((item) =>
+          item.id === order.id ? updatedOrder : item,
+        ),
       );
-    } catch (error) {
-      setLoi((error as Error).message || 'Không thể hủy đơn hàng.');
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Không thể hủy đơn hàng. Vui lòng thử lại.',
+      );
     } finally {
-      setDangHuy(null);
+      setCancelingId(null);
     }
   };
 
-  if (dangTai) {
-    return <div className="noi-dung">Đang tải lịch sử đơn hàng...</div>;
+  if (loading) {
+    return (
+      <div className="p-6 text-center">
+        Đang tải đơn hàng...
+      </div>
+    );
   }
 
   return (
-    <div className="noi-dung">
-      <h2>Lịch sử mua hàng</h2>
+    <div className="mx-auto max-w-5xl p-4 md:p-6">
+      <h1 className="mb-6 text-2xl font-bold">
+        Lịch sử đơn hàng
+      </h1>
 
-      {loi && (
-        <p style={{ color: '#dc2626', marginBottom: 16 }}>
-          {loi}
-        </p>
+      {error && (
+        <div className="mb-4 rounded-lg bg-red-100 p-3 text-red-700">
+          {error}
+        </div>
       )}
 
-      {donHang.length === 0 ? (
-        <p>Bạn chưa có đơn hàng nào.</p>
+      {orders.length === 0 ? (
+        <div className="rounded-lg border bg-white p-8 text-center text-gray-500">
+          Bạn chưa có đơn hàng nào.
+        </div>
       ) : (
-        <div>
-          {donHang.map((item) => (
+        <div className="space-y-5">
+          {orders.map((order) => (
             <div
-              key={item.id}
-              style={{
-                border: '1px solid #ddd',
-                borderRadius: 8,
-                padding: 16,
-                marginBottom: 20,
-              }}
+              key={order.id}
+              className="overflow-hidden rounded-xl border bg-white shadow-sm"
             >
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  flexWrap: 'wrap',
-                  gap: 12,
-                }}
-              >
+              <div className="flex flex-col justify-between gap-3 border-b bg-gray-50 p-4 md:flex-row md:items-center">
                 <div>
-                  <h3>Đơn hàng #{item.id.slice(0, 8)}</h3>
-                  <p>Ngày đặt: {new Date(item.createdAt).toLocaleString('vi-VN')}</p>
+                  <p className="font-semibold">
+                    Đơn hàng #{order.id.slice(0, 8)}
+                  </p>
+
+                  <p className="mt-1 text-sm text-gray-500">
+                    Ngày đặt:{' '}
+                    {new Date(order.createdAt).toLocaleString('vi-VN')}
+                  </p>
                 </div>
 
-                <div>
-                  <strong>
-                    Trạng thái: {trangThaiDonHang[item.status]}
-                  </strong>
+                <div className="flex flex-wrap gap-2">
+                  <span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-700">
+                    {orderStatusLabels[order.status]}
+                  </span>
+
+                  <span
+                    className={`rounded-full px-3 py-1 text-sm font-medium ${
+                      order.paymentStatus === 'PAID'
+                        ? 'bg-green-100 text-green-700'
+                        : order.paymentStatus === 'FAILED'
+                          ? 'bg-red-100 text-red-700'
+                          : order.paymentStatus === 'REFUNDED'
+                            ? 'bg-purple-100 text-purple-700'
+                            : 'bg-yellow-100 text-yellow-700'
+                    }`}
+                  >
+                    {paymentStatusLabels[order.paymentStatus]}
+                  </span>
                 </div>
               </div>
 
-              <hr />
+              <div className="space-y-2 p-4">
+                <h2 className="font-semibold">
+                  Thông tin nhận hàng
+                </h2>
 
-              <h4>Thông tin nhận hàng</h4>
-              <p>Người nhận: {item.recipientName}</p>
-              <p>Số điện thoại: {item.phone}</p>
-              <p>Địa chỉ: {item.shippingAddress}</p>
+                <p>Người nhận: {order.recipientName}</p>
+                <p>Số điện thoại: {order.phone}</p>
+                <p>Địa chỉ: {order.shippingAddress}</p>
 
-              <h4>Sản phẩm đã đặt</h4>
+                {order.note && <p>Ghi chú: {order.note}</p>}
+              </div>
 
-              {item.items.map((sanPham) => (
-                <div
-                  key={sanPham.id}
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    flexWrap: 'wrap',
-                    gap: 8,
-                    padding: '8px 0',
-                    borderBottom: '1px solid #eee',
-                  }}
-                >
-                  <div>
-                    <strong>{sanPham.productName}</strong>
-                    <p>
-                      Size: {sanPham.size} | Màu: {sanPham.color}
-                    </p>
-                    <p>Số lượng: {sanPham.quantity}</p>
-                  </div>
+              <div className="border-t p-4">
+                <h2 className="mb-3 font-semibold">
+                  Sản phẩm đã đặt
+                </h2>
 
-                  <div>
-                    {dinhDangTien(
-                      Number(sanPham.price) * sanPham.quantity,
-                    )}
-                  </div>
+                <div className="space-y-3">
+                  {order.items.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex flex-col justify-between gap-2 rounded-lg bg-gray-50 p-3 sm:flex-row sm:items-center"
+                    >
+                      <div>
+                        <p className="font-medium">
+                          {item.productName}
+                        </p>
+
+                        <p className="text-sm text-gray-500">
+                          Size: {item.size} | Màu: {item.color}
+                        </p>
+
+                        <p className="text-sm text-gray-500">
+                          Số lượng: {item.quantity}
+                        </p>
+                      </div>
+
+                      <p className="font-medium">
+                        {dinhDangTien(
+                          Number(item.price) * item.quantity,
+                        )}
+                      </p>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
 
-              <div style={{ textAlign: 'right', marginTop: 16 }}>
-                <h3>
-                  Tổng tiền: {dinhDangTien(Number(item.totalAmount))}
-                </h3>
+              <div className="flex flex-col justify-between gap-3 border-t bg-gray-50 p-4 sm:flex-row sm:items-center">
+                <div className="space-y-1 text-sm text-gray-600">
+                  <p>
+                    Tạm tính:{' '}
+                    {dinhDangTien(Number(order.subtotalAmount))}
+                  </p>
 
-                {item.status === 'PENDING' && (
+                  <p>
+                    Giảm giá:{' '}
+                    {dinhDangTien(Number(order.discountAmount))}
+                  </p>
+
+                  <p>
+                    Phí vận chuyển:{' '}
+                    {dinhDangTien(Number(order.shippingFee))}
+                  </p>
+
+                  <p className="text-lg font-bold text-red-600">
+                    Tổng tiền:{' '}
+                    {dinhDangTien(Number(order.totalAmount))}
+                  </p>
+                </div>
+
+                {canCancelOrder(order) && (
                   <button
                     type="button"
-                    disabled={dangHuy === item.id}
-                    onClick={() => huyDonHang(item.id)}
-                    style={{
-                      background: '#dc2626',
-                      color: '#fff',
-                      border: 0,
-                      borderRadius: 4,
-                      padding: '8px 16px',
-                      cursor: 'pointer',
-                    }}
+                    onClick={() => void handleCancelOrder(order)}
+                    disabled={cancelingId === order.id}
+                    className="rounded-lg bg-red-600 px-5 py-2 font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {dangHuy === item.id ? 'Đang hủy...' : 'Hủy đơn hàng'}
+                    {cancelingId === order.id
+                      ? 'Đang hủy...'
+                      : 'Hủy đơn hàng'}
                   </button>
                 )}
               </div>

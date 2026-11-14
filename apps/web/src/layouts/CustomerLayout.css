@@ -68,3 +68,13 @@
     gap: 14px;
   }
 }
+.admin-return-link {
+  color: #d97706;
+  font-weight: 700;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.admin-return-link:hover {
+  color: #b45309;
+}
