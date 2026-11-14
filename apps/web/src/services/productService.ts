@@ -1,46 +1,58 @@
-import type { SanPham, TaoSanPhamDto, CapNhatSanPhamDto } from '../types/product';
+
+import type {
+  SanPham,
+  TaoSanPhamDto,
+  CapNhatSanPhamDto,
+} from '../types/product';
+
 import type { ChiTietSanPham } from '../types/cart';
 import { request } from './request';
 
-const API_URL = 'http://localhost:3000/api/products';
+const API_URL = '/products';
 
 export const productService = {
-  // Khách xem chi tiết (size/màu/giá/tồn) - Người 3
-  layChiTiet: (id: string) => request<ChiTietSanPham>(`/catalog/${id}`),
+  // Lấy chi tiết sản phẩm
+  layChiTiet: (id: string) =>
+    request<ChiTietSanPham>(`/catalog/${id}`),
 
-  async layTatCa(): Promise<SanPham[]> {
-    const res = await fetch(API_URL);
-    if (!res.ok) throw new Error('Không lấy được danh sách sản phẩm');
-    return res.json();
+  // Lấy danh sách sản phẩm
+  layTatCa: async (): Promise<SanPham[]> => {
+    return request<SanPham[]>(API_URL);
   },
 
-  async them(data: TaoSanPhamDto): Promise<SanPham> {
-    const res = await fetch(API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    const result = await res.json();
-    if (!res.ok) throw new Error(result.message || 'Không thể thêm sản phẩm');
+  // Thêm sản phẩm
+  them: async (data: TaoSanPhamDto): Promise<SanPham> => {
+    const result = await request<{ product: SanPham }>(
+      API_URL,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      },
+    );
+
     return result.product;
   },
 
-  async capNhat(id: string, data: CapNhatSanPhamDto): Promise<SanPham> {
-    const res = await fetch(`${API_URL}/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    const result = await res.json();
-    if (!res.ok) throw new Error(result.message || 'Không thể cập nhật sản phẩm');
+  // Cập nhật sản phẩm
+  capNhat: async (
+    id: string,
+    data: CapNhatSanPhamDto,
+  ): Promise<SanPham> => {
+    const result = await request<{ product: SanPham }>(
+      `${API_URL}/${id}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      },
+    );
+
     return result.product;
   },
 
-  async xoa(id: string): Promise<void> {
-    const res = await fetch(`${API_URL}/${id}`, {
+  // Xóa sản phẩm
+  xoa: async (id: string): Promise<void> => {
+    await request<void>(`${API_URL}/${id}`, {
       method: 'DELETE',
     });
-    const result = await res.json();
-    if (!res.ok) throw new Error(result.message || 'Không thể xóa sản phẩm');
-  }
+  },
 };

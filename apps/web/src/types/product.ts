@@ -7,12 +7,14 @@ export type BienTheGiay = {
   stock: number;
   priceOverride?: number | string | null;
   isActive?: boolean;
+  imageUrl?: string | null;
 };
 
 export type BienTheGiayInput = {
   size: number;
   color: string;
   priceOverride?: number | null;
+  imageUrl?: string | null;
 };
 
 export type SanPham = {

@@ -1,65 +1,62 @@
-import { useEffect, useState } from "react";
-import type { FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
 
-import { cartService } from "../../services/cartService";
-import { orderService } from "../../services/orderService";
-import { paymentService } from "../../services/paymentService";
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-import { dinhDangTien } from "../../services/request";
+import { cartService } from '../../services/cartService';
+import { orderService } from '../../services/orderService';
+import { paymentService } from '../../services/paymentService';
 
-import type { Order } from "../../types/order";
-import type { PaymentMethod, PaymentResult } from "../../types/payment";
-import { VnpayQrPayment } from "./VnpayQrPayment";
-import "./checkout.css";
+import { dinhDangTien } from '../../services/request';
 
-const PHUONG_THUC: { value: PaymentMethod; ten: string; moTa: string }[] = [
-  { value: "COD", ten: "Thanh toán khi nhận hàng", moTa: "Trả tiền mặt cho đơn vị vận chuyển khi nhận hàng" },
-  { value: "VNPAY", ten: "Thanh toán trực tuyến qua VNPay", moTa: "Thẻ ATM, thẻ quốc tế hoặc QR (môi trường Sandbox)" },
-];
+import type { Order } from '../../types/order';
+import type {
+  PaymentMethod,
+  PaymentResult,
+} from '../../types/payment';
 
-const TRANG_THAI_DON: Record<string, string> = {
-  PENDING: "Chờ xử lý",
-  CONFIRMED: "Đã xác nhận",
-  PROCESSING: "Đang chuẩn bị",
-  SHIPPED: "Đang giao",
-  DELIVERED: "Đã giao",
-  CANCELLED: "Đã huỷ",
-};
-const TRANG_THAI_TT: Record<string, string> = {
-  UNPAID: "Chưa thanh toán",
-  PENDING: "Đang chờ thanh toán",
-  PAID: "Đã thanh toán",
-  FAILED: "Thanh toán thất bại",
-  REFUNDED: "Đã hoàn tiền",
-};
+import { VnpayQrPayment } from './VnpayQrPayment';
+
+type GioHangData = Awaited<
+  ReturnType<typeof cartService.layGioHang>
+>;
 
 export function CheckoutPage() {
   const navigate = useNavigate();
 
-  const [gioHang, setGioHang] = useState<Awaited<
-    ReturnType<typeof cartService.layGioHang>
-  > | null>(null);
+  // Dữ liệu giỏ hàng
+  const [gioHang, setGioHang] = useState<GioHangData | null>(null);
 
-  const [recipientName, setRecipientName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [shippingAddress, setShippingAddress] = useState("");
-  const [note, setNote] = useState("");
+  // Thông tin người nhận
+  const [recipientName, setRecipientName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [shippingAddress, setShippingAddress] = useState('');
+  const [note, setNote] = useState('');
 
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("COD");
+  // Phương thức thanh toán
+  const [paymentMethod, setPaymentMethod] =
+    useState<PaymentMethod>('COD');
 
-  const [createdOrder, setCreatedOrder] = useState<Order | null>(null);
+  // Kết quả tạo đơn hàng
+  const [createdOrder, setCreatedOrder] =
+    useState<Order | null>(null);
 
-  const [paymentResult, setPaymentResult] = useState<PaymentResult | null>(
-    null,
-  );
-  // Giao dịch VNPay đang chờ quét mã QR
-  const [qrPayment, setQrPayment] = useState<PaymentResult | null>(null);
+  // Kết quả thanh toán
+  const [paymentResult, setPaymentResult] =
+    useState<PaymentResult | null>(null);
 
+  // Dữ liệu để hiển thị màn hình QR
+  const [qrPayment, setQrPayment] =
+    useState<PaymentResult | null>(null);
+
+  // Trạng thái giao diện
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
+  const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+
+  // =========================================
+  // 1. TẢI GIỎ HÀNG
+  // =========================================
 
   useEffect(() => {
     let mounted = true;
@@ -67,6 +64,8 @@ export function CheckoutPage() {
     const loadCart = async () => {
       try {
         setLoading(true);
+        setError('');
+
         const data = await cartService.layGioHang();
 
         if (mounted) {
@@ -75,7 +74,9 @@ export function CheckoutPage() {
       } catch (err) {
         if (mounted) {
           setError(
-            err instanceof Error ? err.message : "Không thể tải giỏ hàng.",
+            err instanceof Error
+              ? err.message
+              : 'Không thể tải giỏ hàng.',
           );
         }
       } finally {
@@ -92,9 +93,18 @@ export function CheckoutPage() {
     };
   }, []);
 
-  const createPayment = async (order: Order, method: PaymentMethod) => {
-    setSubmitting(true);
-    setError("");
+  // =========================================
+  // 2. TẠO GIAO DỊCH THANH TOÁN
+  // =========================================
+
+  const createPayment = async (
+    order: Order,
+    method: PaymentMethod,
+  ) => {
+    setError('');
+    setSuccessMessage('');
+    setPaymentResult(null);
+    setQrPayment(null);
 
     try {
       const result = await paymentService.taoThanhToan({
@@ -104,72 +114,87 @@ export function CheckoutPage() {
 
       setPaymentResult(result);
 
-      if (method === "VNPAY") {
-        if (result.status === "PAID") {
-          setSuccessMessage("Thanh toán đã được xác nhận thành công.");
+      // Thanh toán VNPay
+      if (method === 'VNPAY') {
+        if (result.status === 'PAID') {
+          setSuccessMessage(
+            'Thanh toán đã được xác nhận thành công.',
+          );
           return;
         }
 
+        // Có link thanh toán thì hiển thị QR
         if (result.paymentUrl) {
-          // Hiện mã QR ngay trên trang; khách quét bằng điện thoại, trang tự cập nhật khi thanh toán xong
           setQrPayment(result);
           return;
         }
 
         setSuccessMessage(
-          "Đơn hàng đã được tạo. Giao dịch thanh toán đang được xử lý.",
+          'Đơn hàng đã được tạo. Giao dịch thanh toán đang được xử lý.',
         );
         return;
       }
 
+      // Thanh toán COD
       setSuccessMessage(
-        "Cửa hàng sẽ sớm chuẩn bị đơn hàng. Bạn thanh toán tiền mặt khi nhận hàng.",
+        'Đặt hàng thành công! Bạn sẽ thanh toán khi nhận hàng.',
       );
     } catch (err) {
       setError(
         err instanceof Error
           ? err.message
-          : "Không thể tạo giao dịch thanh toán.",
+          : 'Không thể tạo giao dịch thanh toán.',
       );
-    } finally {
-      setSubmitting(false);
     }
   };
 
-  const handleCheckout = async (event: FormEvent<HTMLFormElement>) => {
+  // =========================================
+  // 3. XỬ LÝ ĐẶT HÀNG
+  // =========================================
+
+  const handleCheckout = async (
+    event: React.FormEvent<HTMLFormElement>,
+  ) => {
     event.preventDefault();
 
     if (submitting) return;
 
-    setError("");
-    setSuccessMessage("");
+    setError('');
+    setSuccessMessage('');
 
+    // Kiểm tra họ tên
     if (!recipientName.trim()) {
-      setError("Vui lòng nhập họ tên người nhận.");
+      setError('Vui lòng nhập họ tên người nhận.');
       return;
     }
 
-    if (!/^(0|\+84)[0-9]{9,10}$/.test(phone.replace(/\s/g, ""))) {
-      setError("Số điện thoại không hợp lệ.");
+    // Kiểm tra số điện thoại
+    const normalizedPhone = phone.replace(/\s/g, '');
+
+    if (!/^(0|\+84)[0-9]{9,10}$/.test(normalizedPhone)) {
+      setError('Số điện thoại không hợp lệ.');
       return;
     }
 
+    // Kiểm tra địa chỉ
     if (!shippingAddress.trim()) {
-      setError("Vui lòng nhập địa chỉ giao hàng.");
+      setError('Vui lòng nhập địa chỉ giao hàng.');
       return;
     }
 
+    // Kiểm tra giỏ hàng
     if (!gioHang || gioHang.items.length === 0) {
-      setError("Giỏ hàng đang trống.");
+      setError('Giỏ hàng đang trống.');
       return;
     }
 
     setSubmitting(true);
 
     try {
+      // Tạo đơn hàng trước
       const order = await orderService.taoDonHang({
         recipientName: recipientName.trim(),
-        phone: phone.trim(),
+        phone: normalizedPhone,
         shippingAddress: shippingAddress.trim(),
         note: note.trim(),
         paymentMethod,
@@ -177,100 +202,178 @@ export function CheckoutPage() {
 
       setCreatedOrder(order);
 
+      // Sau khi tạo đơn hàng, tạo giao dịch thanh toán
       await createPayment(order, paymentMethod);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Không thể tạo đơn hàng.");
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Không thể tạo đơn hàng.',
+      );
     } finally {
       setSubmitting(false);
     }
   };
 
+  // =========================================
+  // 4. THỬ LẠI THANH TOÁN
+  // =========================================
+
   const handleRetryPayment = async () => {
     if (!createdOrder || submitting) return;
 
-    await createPayment(createdOrder, paymentMethod);
+    setSubmitting(true);
+
+    try {
+      await createPayment(createdOrder, paymentMethod);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  /* ---------------------------------------------------------------- đang tải */
+  // =========================================
+  // 5. ĐANG TẢI GIỎ HÀNG
+  // =========================================
+
   if (loading) {
     return (
-      <div className="checkout-page">
-        <p className="checkout-muted">Đang tải giỏ hàng...</p>
+      <div className="co-page">
+        <p className="muted">Đang tải giỏ hàng...</p>
       </div>
     );
   }
 
-  /* ---------------------------------------------------------------- quét mã QR VNPay */
+  // =========================================
+  // 6. HIỂN THỊ MÀN HÌNH VNPay QR
+  // =========================================
+
   if (qrPayment) {
     return (
-      <div className="checkout-page">
-        <VnpayQrPayment payment={qrPayment} onFinished={setPaymentResult} />
+      <div className="co-page">
+        <VnpayQrPayment
+          payment={qrPayment}
+          onFinished={(result) => {
+            setPaymentResult(result);
+          }}
+        />
       </div>
     );
   }
 
-  /* ---------------------------------------------------------------- đã tạo đơn */
+  // =========================================
+  // 7. HIỂN THỊ KẾT QUẢ ĐƠN HÀNG
+  // =========================================
+
   if (createdOrder) {
     const isPaid =
-      paymentResult?.status === "PAID" ||
-      paymentResult?.orderPaymentStatus === "PAID";
+      paymentResult?.status === 'PAID' ||
+      paymentResult?.orderPaymentStatus === 'PAID';
 
-    const isCOD = paymentMethod === "COD";
-    const ok = Boolean(paymentResult) && !error;
-    const trangThaiDon = paymentResult?.orderStatus ?? createdOrder.status;
-    const trangThaiTT = paymentResult?.orderPaymentStatus ?? createdOrder.paymentStatus;
+    const isCOD = paymentMethod === 'COD';
 
     return (
-      <div className="checkout-page">
-        <div className="checkout-result">
-          <i className={`checkout-result-icon ${ok ? "ok" : "wait"}`}>{ok ? "✓" : "!"}</i>
-          <h2>
+      <div className="co-page">
+        <div className="co-result">
+          <i className={`co-result-icon ${isPaid || isCOD ? 'ok' : 'wait'}`}>
+            {isPaid || isCOD ? '✓' : '…'}
+          </i>
+
+          <h1>
             {isPaid
-              ? "Thanh toán thành công!"
-              : isCOD && ok
-                ? "Đặt hàng thành công!"
-                : "Đơn hàng đã được tạo!"}
-          </h2>
+              ? 'Thanh toán thành công!'
+              : isCOD
+                ? 'Đặt hàng thành công!'
+                : 'Đơn hàng đã được tạo!'}
+          </h1>
 
-          {successMessage && <p className="checkout-muted">{successMessage}</p>}
+          {successMessage && <p>{successMessage}</p>}
 
-          {error && <div className="checkout-error">{error}</div>}
-
-          <div className="checkout-order-info">
-            <div><span>Mã đơn hàng</span><strong>#{createdOrder.id.slice(0, 8).toUpperCase()}</strong></div>
-            <div><span>Người nhận</span><strong>{createdOrder.recipientName}</strong></div>
-            <div><span>Số điện thoại</span><strong>{createdOrder.phone}</strong></div>
-            <div><span>Địa chỉ</span><strong>{createdOrder.shippingAddress}</strong></div>
-            <div><span>Tổng tiền</span><strong>{dinhDangTien(Number(createdOrder.totalAmount))}</strong></div>
-            <div><span>Trạng thái đơn</span><strong>{TRANG_THAI_DON[trangThaiDon] ?? trangThaiDon}</strong></div>
-            <div><span>Thanh toán</span><strong>{TRANG_THAI_TT[trangThaiTT] ?? trangThaiTT}</strong></div>
-            <div><span>Phương thức</span><strong>{isCOD ? "Thanh toán khi nhận hàng" : "VNPay"}</strong></div>
-          </div>
-
-          {!paymentResult && (
-            <div className="checkout-retry">
-              <p className="checkout-muted">
-                Đơn hàng đã được tạo nhưng chưa tạo được giao dịch thanh toán.
-                Bạn có thể thử lại.
-              </p>
-
-              <button
-                type="button"
-                className="checkout-btn primary"
-                onClick={handleRetryPayment}
-                disabled={submitting}
-              >
-                {submitting ? "Đang xử lý..." : "Thử lại thanh toán"}
-              </button>
+          {error && (
+            <div className="voucher-error">
+              {error}
             </div>
           )}
 
-          <div className="checkout-actions">
-            <button type="button" className="checkout-btn primary" onClick={() => navigate("/orders")}>
+          <div className="co-facts">
+            <div>
+              <span>Mã đơn hàng</span>
+              <strong>{createdOrder.id}</strong>
+            </div>
+
+            <div>
+              <span>Người nhận</span>
+              <strong>{createdOrder.recipientName}</strong>
+            </div>
+
+            <div>
+              <span>Số điện thoại</span>
+              <strong>{createdOrder.phone}</strong>
+            </div>
+
+            <div>
+              <span>Địa chỉ</span>
+              <strong>{createdOrder.shippingAddress}</strong>
+            </div>
+
+            <div>
+              <span>Tổng tiền</span>
+              <strong>
+                {dinhDangTien(Number(createdOrder.totalAmount))}
+              </strong>
+            </div>
+
+            <div>
+              <span>Trạng thái đơn hàng</span>
+              <strong>
+                {paymentResult?.orderStatus ?? createdOrder.status}
+              </strong>
+            </div>
+
+            <div>
+              <span>Trạng thái thanh toán</span>
+              <strong>
+                {paymentResult?.orderPaymentStatus ??
+                  createdOrder.paymentStatus}
+              </strong>
+            </div>
+
+            <div>
+              <span>Phương thức thanh toán</span>
+              <strong>
+                {isCOD
+                  ? 'Thanh toán khi nhận hàng'
+                  : 'VNPay'}
+              </strong>
+            </div>
+          </div>
+
+          {error && paymentMethod === 'VNPAY' && (
+            <button
+              type="button"
+              className="co-btn primary"
+              onClick={handleRetryPayment}
+              disabled={submitting}
+            >
+              {submitting
+                ? 'Đang xử lý...'
+                : 'Thử lại thanh toán'}
+            </button>
+          )}
+
+          <div className="co-actions">
+            <button
+              type="button"
+              className="co-btn primary"
+              onClick={() => navigate('/orders')}
+            >
               Xem đơn hàng
             </button>
 
-            <button type="button" className="checkout-btn" onClick={() => navigate("/")}>
+            <button
+              type="button"
+              className="co-btn"
+              onClick={() => navigate('/')}
+            >
               Tiếp tục mua sắm
             </button>
           </div>
@@ -279,159 +382,211 @@ export function CheckoutPage() {
     );
   }
 
-  /* ---------------------------------------------------------------- form thanh toán */
-  return (
-    <div className="checkout-page">
-      <button type="button" className="checkout-back" onClick={() => navigate("/cart")}>
-        ← Quay lại giỏ hàng
-      </button>
+  // =========================================
+  // 8. GIỎ HÀNG TRỐNG
+  // =========================================
 
+  if (!gioHang || gioHang.items.length === 0) {
+    return (
+      <div className="co-page">
+        <div className="checkout-head">
+          <p className="section-kicker">YOUR ORDER</p>
+          <h1>Thanh toán</h1>
+        </div>
+
+        <p>Giỏ hàng của bạn đang trống.</p>
+
+        <button
+          type="button"
+          className="checkout-button"
+          onClick={() => navigate('/')}
+        >
+          Tiếp tục mua sắm
+        </button>
+      </div>
+    );
+  }
+
+  // =========================================
+  // 9. GIAO DIỆN CHECKOUT
+  // =========================================
+
+  return (
+    <div className="co-page">
       <div className="checkout-head">
-        <p className="checkout-kicker">BƯỚC CUỐI CÙNG</p>
+        <p className="section-kicker">YOUR ORDER</p>
         <h1>Thanh toán đơn hàng</h1>
       </div>
 
-      {error && <div className="checkout-error">{error}</div>}
-
-      {!gioHang || gioHang.items.length === 0 ? (
-        <div className="checkout-empty">
-          <p>Giỏ hàng của bạn đang trống.</p>
-
-          <button type="button" className="checkout-btn primary" onClick={() => navigate("/")}>
-            Tiếp tục mua sắm
-          </button>
+      {error && (
+        <div className="voucher-error">
+          {error}
         </div>
-      ) : (
-        <form className="checkout-container" onSubmit={handleCheckout} noValidate>
-          <div className="checkout-main">
-            <section className="checkout-section">
-              <h2>Thông tin người nhận</h2>
+      )}
 
-              <div className="checkout-fields">
-                <div className="checkout-field">
-                  <label htmlFor="recipientName">Họ và tên người nhận</label>
-                  <input
-                    id="recipientName"
-                    type="text"
-                    value={recipientName}
-                    onChange={(event) => setRecipientName(event.target.value)}
-                    placeholder="Nguyễn Văn An"
-                    autoComplete="name"
-                    required
-                  />
-                </div>
+      <div className="checkout-grid">
+        {/* Cột trái: thông tin nhận hàng và thanh toán */}
+        <form
+          className="form-panel"
+          onSubmit={handleCheckout}
+        >
+          <section>
+            <h2>Thông tin người nhận</h2>
 
-                <div className="checkout-field">
-                  <label htmlFor="phone">Số điện thoại</label>
-                  <input
-                    id="phone"
-                    type="tel"
-                    value={phone}
-                    onChange={(event) => setPhone(event.target.value)}
-                    placeholder="090 123 4567"
-                    autoComplete="tel"
-                    required
-                  />
-                </div>
+            <div className="form-grid">
+              <label className="full">
+                Họ và tên người nhận
+                <input
+                  type="text"
+                  value={recipientName}
+                  onChange={(event) =>
+                    setRecipientName(event.target.value)
+                  }
+                  placeholder="Nhập họ và tên"
+                  autoComplete="name"
+                  required
+                />
+              </label>
 
-                <div className="checkout-field full">
-                  <label htmlFor="shippingAddress">Địa chỉ giao hàng</label>
-                  <textarea
-                    id="shippingAddress"
-                    value={shippingAddress}
-                    onChange={(event) => setShippingAddress(event.target.value)}
-                    placeholder="Số nhà, tên đường, phường/xã, quận/huyện, tỉnh/thành phố"
-                    autoComplete="street-address"
-                    required
-                  />
-                </div>
+              <label className="full">
+                Số điện thoại
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(event) =>
+                    setPhone(event.target.value)
+                  }
+                  placeholder="Nhập số điện thoại"
+                  autoComplete="tel"
+                  required
+                />
+              </label>
 
-                <div className="checkout-field full">
-                  <label htmlFor="note">
-                    Ghi chú <span>(không bắt buộc)</span>
-                  </label>
-                  <textarea
-                    id="note"
-                    value={note}
-                    onChange={(event) => setNote(event.target.value)}
-                    placeholder="Ví dụ: giao giờ hành chính"
-                  />
+              <label className="full">
+                Địa chỉ giao hàng
+                <textarea
+                  value={shippingAddress}
+                  onChange={(event) =>
+                    setShippingAddress(event.target.value)
+                  }
+                  placeholder="Nhập địa chỉ nhận hàng"
+                  autoComplete="street-address"
+                  rows={3}
+                  required
+                />
+              </label>
+
+              <label className="full">
+                Ghi chú
+                <textarea
+                  value={note}
+                  onChange={(event) =>
+                    setNote(event.target.value)
+                  }
+                  placeholder="Ghi chú cho người bán (không bắt buộc)"
+                  rows={3}
+                />
+              </label>
+            </div>
+          </section>
+
+          <section>
+            <h2>Phương thức thanh toán</h2>
+
+            <label className="payment-choice">
+              <input
+                type="radio"
+                name="paymentMethod"
+                value="COD"
+                checked={paymentMethod === 'COD'}
+                onChange={() => setPaymentMethod('COD')}
+              />
+
+              <span>
+                <strong>Thanh toán khi nhận hàng (COD)</strong>
+                <small>
+                  Thanh toán trực tiếp khi nhận được sản phẩm.
+                </small>
+              </span>
+            </label>
+
+            <label className="payment-choice">
+              <input
+                type="radio"
+                name="paymentMethod"
+                value="VNPAY"
+                checked={paymentMethod === 'VNPAY'}
+                onChange={() => setPaymentMethod('VNPAY')}
+              />
+
+              <span>
+                <strong>Thanh toán trực tuyến qua VNPay</strong>
+                <small>
+                  Quét mã QR để thanh toán qua VNPay.
+                </small>
+              </span>
+            </label>
+          </section>
+
+          <button
+            type="submit"
+            className="checkout-button"
+            disabled={submitting}
+          >
+            {submitting ? 'Đang xử lý...' : 'ĐẶT HÀNG'}
+          </button>
+        </form>
+
+        {/* Cột phải: thông tin đơn hàng */}
+        <aside className="summary">
+          <h2>Đơn hàng của bạn</h2>
+
+          {gioHang.items.map((item, index) => (
+            <div
+              className="summary-product"
+              key={`${item.productName}-${item.size}-${item.color}-${index}`}
+            >
+              <div className="summary-product-image">
+                <div className="summary-product-placeholder">
+                  Sản phẩm
                 </div>
               </div>
-            </section>
 
-            <section className="checkout-section">
-              <h2>Phương thức thanh toán</h2>
+              <div className="summary-product-info">
+                <strong>{item.productName}</strong>
 
-              {PHUONG_THUC.map((pt) => (
-                <label
-                  key={pt.value}
-                  className={`checkout-choice ${paymentMethod === pt.value ? "chosen" : ""}`}
-                >
-                  <input
-                    type="radio"
-                    name="paymentMethod"
-                    value={pt.value}
-                    checked={paymentMethod === pt.value}
-                    onChange={() => setPaymentMethod(pt.value)}
-                  />
-                  <span>
-                    <strong>{pt.ten}</strong>
-                    <small>{pt.moTa}</small>
-                  </span>
-                </label>
-              ))}
-            </section>
+                <small>
+                  Size: {item.size} | Màu: {item.color}
+                </small>
+
+                <small>Số lượng: {item.quantity}</small>
+              </div>
+
+              <strong className="summary-product-price">
+                {dinhDangTien(Number(item.lineTotal))}
+              </strong>
+            </div>
+          ))}
+
+          <div className="sum-row">
+            <span>Tạm tính</span>
+            <strong>
+              {dinhDangTien(Number(gioHang.subtotal))}
+            </strong>
           </div>
 
-          <aside className="checkout-summary">
-            <h2>Đơn hàng của bạn</h2>
+          <div className="sum-total">
+            <span>Tổng thanh toán</span>
+            <strong>
+              {dinhDangTien(Number(gioHang.subtotal))}
+            </strong>
+          </div>
 
-            {gioHang.items.map((item, index) => (
-              <div className="checkout-item" key={index}>
-                <div className="checkout-item-thumb" aria-hidden="true">
-                  {String(item.productName ?? "?").charAt(0).toUpperCase()}
-                </div>
-                <div className="checkout-item-info">
-                  <strong>{item.productName}</strong>
-                  <small>
-                    Size {item.size} · {item.color} · SL {item.quantity}
-                  </small>
-                </div>
-                <div className="checkout-item-price">{dinhDangTien(Number(item.lineTotal))}</div>
-              </div>
-            ))}
-
-            <div className="checkout-lines">
-              <div className="checkout-line">
-                <span>Tạm tính</span>
-                <span>{dinhDangTien(Number(gioHang.subtotal))}</span>
-              </div>
-              <div className="checkout-line">
-                <span>Phí vận chuyển</span>
-                <span>Miễn phí</span>
-              </div>
-              <div className="checkout-total">
-                <span>Tổng cộng</span>
-                <strong>{dinhDangTien(Number(gioHang.subtotal))}</strong>
-              </div>
-            </div>
-
-            <button type="submit" className="checkout-btn primary block" disabled={submitting}>
-              {submitting
-                ? "Đang xử lý..."
-                : paymentMethod === "VNPAY"
-                  ? "Đặt hàng và thanh toán →"
-                  : "Đặt hàng"}
-            </button>
-            <p className="checkout-note">
-              {paymentMethod === "VNPAY"
-                ? "Sau khi đặt hàng, quét mã QR bằng điện thoại để thanh toán qua VNPay."
-                : "Bạn thanh toán khi nhận hàng."}
-            </p>
-          </aside>
-        </form>
-      )}
+          <p className="muted">
+            Vui lòng kiểm tra thông tin trước khi đặt hàng.
+          </p>
+        </aside>
+      </div>
     </div>
   );
 }

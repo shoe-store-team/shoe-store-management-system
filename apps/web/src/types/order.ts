@@ -68,6 +68,7 @@ export type CreateOrderDto = {
   addressId?: string;
   note?: string;
   paymentMethod: PaymentMethod;
+  promotionCode?: string;
 };
 
 export type OrderResponse = {

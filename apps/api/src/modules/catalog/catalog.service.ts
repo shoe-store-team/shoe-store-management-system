@@ -22,6 +22,7 @@ export async function getProductDetail(id: string) {
       id: v.id,
       size: v.size,
       color: v.color,
+      imageUrl: v.imageUrl,
       price: (v.priceOverride ?? p.basePrice).toNumber(),
       stock: v.stock,
     })),

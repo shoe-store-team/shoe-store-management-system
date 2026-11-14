@@ -28,5 +28,12 @@ export type ChiTietSanPham = {
   imageUrl: string | null;
   category: { id: string; name: string } | null;
   basePrice: number;
-  variants: { id: string; size: number; color: string; price: number; stock: number }[];
+  variants: {
+  id: string;
+  size: number;
+  color: string;
+  imageUrl: string | null;
+  price: number;
+  stock: number;
+}[];
 };
