@@ -11,12 +11,8 @@ router.use(authenticateToken);
 
 // POST /api/promotions/validate  { code } -> subtotal lấy từ giỏ ở server
 router.post('/validate', wrap(async (req, res) => {
-    const cart = await getCart(req.authUser!.id);
-  // Chỉ tính các dòng còn mua được, tránh giảm giá trên hàng đã hết/ngừng bán
-  const subtotal = cart.items
-    .filter((i) => i.available)
-    .reduce((sum, i) => sum + i.lineTotal, 0);
-  res.json(await promo.validateForSubtotal(req.body?.code, subtotal));
+      const cart = await getCart(req.authUser!.id);
+  res.json(await promo.validateForSubtotal(req.body?.code, cart.payableSubtotal));
 }));
 
 // ---- Admin (quyền lấy từ token qua authorizeRoles của nhóm) ----
