@@ -3,196 +3,90 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { paymentService } from '../../services/paymentService';
 import { dinhDangTien } from '../../services/request';
 import type { PaymentResult } from '../../types/payment';
+import { PayButton } from './PayButton';
 import './payment.css';
 
 type TrangThai =
-  | { type: 'loading' }
-  | { type: 'error'; message: string }
-  | { type: 'success'; data: PaymentResult };
+  | { loai: 'dang-tai' }
+  | { loai: 'loi'; thongBao: string }
+  | { loai: 'xong'; tt: PaymentResult };
 
+// Đổi nếu route lịch sử đơn của nhóm khác
+const TRANG_DON_HANG = '/orders';
+const doi = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const gio = (iso: string) => new Date(iso).toLocaleString('vi-VN');
+
+/**
+ * Đích đến sau khi đặt hàng:
+ *  - COD: backend trả về ngay -> "Đặt hàng thành công".
+ *  - VNPay: VNPay chuyển về /payment/result?reference=... (backend redirect). Trang này không tự quyết đúng/sai:
+ *    nó hỏi backend; nếu giao dịch còn PENDING (IPN chưa tới, VD chạy localhost) thì đối soát để backend hỏi lại VNPay.
+ */
 export function PaymentResultPage() {
-  const [searchParams] = useSearchParams();
+  const [params] = useSearchParams();
+  const reference = params.get('reference');
+  const loiUrl = params.get('error');
+  const [trangThai, setTrangThai] = useState<TrangThai>({ loai: 'dang-tai' });
 
-  const reference = searchParams.get('reference');
-  const error = searchParams.get('error');
-
-  const [trangThai, setTrangThai] = useState<TrangThai>({
-    type: 'loading',
-  });
-
-  const [dangKiemTra, setDangKiemTra] = useState(false);
-
-  const taiKetQua = useCallback(async () => {
-    if (error) {
-      setTrangThai({
-        type: 'error',
-        message:
-          error === 'signature'
-            ? 'Chữ ký xác thực thanh toán không hợp lệ.'
-            : error === 'config'
-              ? 'Cổng thanh toán chưa được cấu hình đầy đủ.'
-              : 'Thanh toán không thành công. Vui lòng kiểm tra lại.',
-      });
-      return;
-    }
-
-    if (!reference) {
-      setTrangThai({
-        type: 'error',
-        message: 'Không tìm thấy mã giao dịch thanh toán.',
-      });
-      return;
-    }
-
-    setDangKiemTra(true);
-
-    try {
-      let ketQua = await paymentService.layTheoMaThamChieu(reference);
-
-      if (ketQua.method === 'VNPAY' && ketQua.status === 'PENDING') {
-        for (let i = 0; i < 3; i++) {
-          await new Promise((resolve) => setTimeout(resolve, 2000));
-
-          ketQua = await paymentService.doiSoat(ketQua.id);
-
-          if (ketQua.status !== 'PENDING') {
-            break;
-          }
-        }
+  const tai = useCallback(
+    async (daHuy: () => boolean) => {
+      if (loiUrl) {
+        setTrangThai({
+          loai: 'loi',
+          thongBao:
+            loiUrl === 'signature'
+              ? 'Dữ liệu trả về từ VNPay không hợp lệ. Nếu bạn đã bị trừ tiền, vui lòng liên hệ cửa hàng.'
+              : 'Hệ thống thanh toán chưa được cấu hình.',
+        });
+        return;
       }
-
-      setTrangThai({
-        type: 'success',
-        data: ketQua,
-      });
-    } catch (err) {
-      setTrangThai({
-        type: 'error',
-        message:
-          err instanceof Error
-            ? err.message
-            : 'Không thể lấy kết quả thanh toán.',
-      });
-    } finally {
-      setDangKiemTra(false);
-    }
-  }, [reference, error]);
+      if (!reference) {
+        setTrangThai({ loai: 'loi', thongBao: 'Thiếu mã giao dịch.' });
+        return;
+      }
+      setTrangThai({ loai: 'dang-tai' });
+      try {
+        let tt = await paymentService.layTheoMaThamChieu(reference);
+        for (let i = 0; i < 3 && tt.method === 'VNPAY' && tt.status === 'PENDING' && !daHuy(); i++) {
+          tt = await paymentService.doiSoat(tt.id);
+          if (tt.status === 'PENDING') await doi(2000);
+        }
+        if (!daHuy()) setTrangThai({ loai: 'xong', tt });
+      } catch (e) {
+        if (!daHuy()) setTrangThai({ loai: 'loi', thongBao: (e as Error).message });
+      }
+    },
+    [reference, loiUrl],
+  );
 
   useEffect(() => {
-    void taiKetQua();
-  }, [taiKetQua]);
+    let huy = false;
+    void tai(() => huy);
+    return () => { huy = true; };
+  }, [tai]);
 
-  if (trangThai.type === 'loading') {
+  const lienKet = (
+    <div className="co-actions">
+      <Link className="co-btn primary" to={TRANG_DON_HANG}>Xem đơn hàng của tôi</Link>
+      <Link className="co-btn" to="/">Tiếp tục mua sắm</Link>
+    </div>
+  );
+
+  if (trangThai.loai === 'dang-tai')
+    return <div className="co-page"><div className="co-result"><p>Đang xác nhận thanh toán...</p></div></div>;
+
+  if (trangThai.loai === 'loi')
     return (
-      <main className="co-page">
-        <section className="co-result">
-          <h2>Đang kiểm tra thanh toán...</h2>
-          <p>Vui lòng chờ trong giây lát.</p>
-        </section>
-      </main>
-    );
-  }
-
-<<<<<<< Updated upstream
-  if (trangThai.type === 'error') {
-    return (
-      <main className="co-page">
-        <section className="co-result">
-          <h2>Không thể xác nhận thanh toán</h2>
-          <p>{trangThai.message}</p>
-
-          <div className="co-actions">
-            <Link to="/orders" className="co-btn">
-              Xem đơn hàng
-            </Link>
-
-            <Link to="/products" className="co-btn">
-              Tiếp tục mua sắm
-            </Link>
-          </div>
-        </section>
-      </main>
-    );
-  }
-
-  const tt = trangThai.data;
-
-  const daThanhToan = tt.status === 'PAID';
-  const thatBai = tt.status === 'FAILED';
-  const choThanhToan = tt.status === 'PENDING';
-  const laCOD = tt.method === 'COD';
-
-  return (
-    <main className="co-page">
-      <section className="co-result">
-        <div className="co-result-icon">
-          {daThanhToan || laCOD ? '✓' : thatBai ? '✕' : '…'}
+      <div className="co-page">
+        <div className="co-result">
+          <i className="co-result-icon fail">!</i>
+          <h1>Không thể xác nhận thanh toán</h1>
+          <p>{trangThai.thongBao}</p>
+          {lienKet}
         </div>
+      </div>
+    );
 
-        <h2>
-          {daThanhToan
-            ? 'Thanh toán thành công'
-            : laCOD
-              ? 'Đặt hàng thành công'
-              : thatBai
-                ? 'Thanh toán thất bại'
-                : 'Đang chờ thanh toán'}
-        </h2>
-
-        <p>
-          {daThanhToan
-            ? 'Giao dịch của bạn đã được xác nhận.'
-            : laCOD
-              ? 'Đơn hàng đã được ghi nhận. Bạn sẽ thanh toán khi nhận hàng.'
-              : thatBai
-                ? 'Giao dịch thất bại. Đơn hàng đã được hủy theo quy định.'
-                : 'Hệ thống chưa nhận được xác nhận thanh toán. Bạn có thể kiểm tra lại trạng thái.'}
-        </p>
-
-        <div className="co-facts">
-          <div>
-            <span>Mã đơn hàng</span>
-            <strong>{tt.orderCode}</strong>
-          </div>
-
-          <div>
-            <span>Số tiền</span>
-            <strong>{dinhDangTien(tt.amount)}</strong>
-          </div>
-
-          <div>
-            <span>Phương thức</span>
-            <strong>{tt.method}</strong>
-          </div>
-
-          <div>
-            <span>Trạng thái thanh toán</span>
-            <strong>
-              {daThanhToan
-                ? 'Đã thanh toán'
-                : laCOD
-                  ? 'Thanh toán khi nhận hàng'
-                  : thatBai
-                    ? 'Thất bại'
-                    : 'Đang chờ'}
-            </strong>
-          </div>
-
-          {tt.transactionId && (
-            <div>
-              <span>Mã giao dịch</span>
-              <strong>{tt.transactionId}</strong>
-            </div>
-          )}
-
-          {tt.paidAt && (
-            <div>
-              <span>Thời gian thanh toán</span>
-              <strong>
-                {new Date(tt.paidAt).toLocaleString('vi-VN')}
-              </strong>
-            </div>
-=======
   const { tt } = trangThai;
   const laCod = tt.method === 'COD';
   const donDaHuy = tt.orderStatus === 'CANCELLED';
@@ -243,52 +137,10 @@ export function PaymentResultPage() {
               <button className="co-btn" onClick={() => void tai(() => false)}>Kiểm tra lại</button>
               <PayButton orderId={tt.orderId} label="Quay lại trang thanh toán" />
             </>
->>>>>>> Stashed changes
           )}
         </div>
-
-        {thatBai && (
-          <div className="co-actions">
-            <p>
-              Đơn hàng này đã bị hủy. Nếu muốn mua sản phẩm,
-              vui lòng tạo một đơn hàng mới.
-            </p>
-
-            <Link to="/products" className="co-btn">
-              Tiếp tục mua sắm
-            </Link>
-          </div>
-        )}
-
-        {choThanhToan && (
-          <div className="co-actions">
-            <button
-              type="button"
-              className="co-btn"
-              disabled={dangKiemTra}
-              onClick={() => void taiKetQua()}
-            >
-              {dangKiemTra ? 'Đang kiểm tra...' : 'Kiểm tra lại thanh toán'}
-            </button>
-
-            <Link to="/orders" className="co-btn">
-              Xem đơn hàng
-            </Link>
-          </div>
-        )}
-
-        {(daThanhToan || laCOD) && (
-          <div className="co-actions">
-            <Link to="/orders" className="co-btn">
-              Xem đơn hàng
-            </Link>
-
-            <Link to="/products" className="co-btn">
-              Tiếp tục mua sắm
-            </Link>
-          </div>
-        )}
-      </section>
-    </main>
+        {lienKet}
+      </div>
+    </div>
   );
 }
