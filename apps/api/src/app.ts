@@ -10,7 +10,7 @@ import orderRouter from "./modules/orders/order.router";
 import customerRouter from "./modules/customer/customer.router";
 import dashboardRouter from "./modules/dashboard/dashboard.router";
 import inventoryRouter from "./modules/inventory/inventory.router";
-import { paymentRouter } from "./modules/payments/payment.router";
+import paymentRouter from "./modules/payments/payment.router";
 import promotionRouter from "./modules/promotions/promotion.router";
 import usersRouter from "./modules/users/users.router";
 
@@ -42,9 +42,9 @@ app.use("/api/catalog", catalogRouter); // Người 3: Khách xem, lọc, tìm k
 app.use("/api/cart", cartRouter); // Người 4: Giỏ hàng & Thanh toán tạo đơn
 app.use("/api/orders", orderRouter); // Người 5: Admin quản lý đơn & Báo cáo
 app.use("/api/customer", customerRouter); // Người 6: Hồ sơ cá nhân & Đơn đã mua
-app.use("/api/dashboard", dashboardRouter);
+app.use("/api/dashboard", dashboardRouter); // M6: thống kê (chỉ ADMIN)
 app.use("/api/inventory", inventoryRouter);
-app.use("/api/payments", paymentRouter);
+app.use("/api/payments", paymentRouter); // M6: thanh toán COD / VNPay
 app.use("/api/promotions", promotionRouter);
 app.use("/api/users", usersRouter);
 

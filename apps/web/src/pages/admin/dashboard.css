@@ -1,0 +1,39 @@
+.db-page { max-width: 1220px; margin: 0 auto; padding: 32px 5vw 80px; color: #20202a; font-family: 'Be Vietnam Pro', sans-serif; }
+.db-page * { box-sizing: border-box; }
+.db-head { display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+.db-head h1 { font-size: 22px; margin: 0; letter-spacing: -.5px; }
+.db-head p { margin: 4px 0 0; color: #77766f; font-size: 12px; }
+.db-filters { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 12px; }
+.db-filters button, .db-filters input { font: inherit; font-size: 12px; border: 1px solid #deddd7; background: #fff; padding: 7px 10px; color: #20202a; }
+.db-filters button { cursor: pointer; }
+.db-filters button.on { background: #191917; color: #fff; border-color: #191917; }
+.db-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.db-kpi { border: 1px solid #dfded8; background: #fff; padding: 14px 16px; }
+.db-kpi span { display: block; color: #77766f; font-size: 11px; }
+.db-kpi strong { display: block; font-size: 20px; margin-top: 6px; font-variant-numeric: tabular-nums; }
+.db-kpi small { display: block; color: #99988f; font-size: 11px; margin-top: 4px; }
+.db-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; }
+@media (max-width: 860px) { .db-grid { grid-template-columns: 1fr; } }
+.db-card { border: 1px solid #dfded8; background: #fff; padding: 16px; margin-bottom: 14px; }
+.db-card h2 { font-size: 14px; margin: 0 0 12px; }
+.db-empty { color: #99988f; font-size: 12px; padding: 18px 0; text-align: center; }
+/* Biểu đồ cột doanh thu: 1 chuỗi, 1 màu, lưới mờ */
+.db-chart { position: relative; height: 200px; margin-top: 34px; display: flex; align-items: flex-end; gap: 2px; border-bottom: 1px solid #dfded8; padding-top: 8px; }
+.db-chart .col { flex: 1; height: 100%; display: flex; align-items: flex-end; position: relative; cursor: default; }
+.db-chart .bar { width: 100%; background: #6f5a43; border-radius: 4px 4px 0 0; min-height: 0; }
+.db-chart .col:hover .bar { background: #191917; }
+.db-chart .tip { display: none; position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: #191917; color: #fff; font-size: 11px; padding: 6px 8px; white-space: nowrap; z-index: 2; pointer-events: none; }
+.db-chart .col:hover .tip { display: block; }
+.db-axis { display: flex; justify-content: space-between; color: #99988f; font-size: 10px; margin-top: 4px; }
+.db-hbar { display: grid; grid-template-columns: 110px 1fr 40px; gap: 8px; align-items: center; font-size: 12px; padding: 4px 0; }
+.db-hbar .track { height: 10px; background: #f5f3ee; }
+.db-hbar .fill { height: 100%; background: #6f5a43; border-radius: 0 4px 4px 0; }
+.db-hbar.cancel .fill { background: #a55e62; }
+.db-hbar b { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+.db-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.db-table th, .db-table td { text-align: left; padding: 6px 4px; border-bottom: 1px solid #f0efea; }
+.db-table th { color: #77766f; font-weight: 500; }
+.db-table td.num, .db-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.db-warn { color: #a55e62; font-weight: 600; }
+.db-error { border: 1px solid #e7c9cb; background: #f9ecee; color: #a55e62; padding: 14px; font-size: 13px; }
+details.db-raw summary { cursor: pointer; font-size: 12px; color: #77766f; margin-top: 8px; }
