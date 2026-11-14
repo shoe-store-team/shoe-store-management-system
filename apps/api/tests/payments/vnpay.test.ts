@@ -51,6 +51,6 @@ test("thiếu cấu hình thì báo lỗi 503, không ném lỗi lạ", () => {
   const saved = process.env.VNPAY_HASH_SECRET;
   delete process.env.VNPAY_HASH_SECRET;
   assert.equal(vnpay.isConfigured(), false);
-  assert.throws(() => vnpay.config(), (e: any) => e.status === 503);
+  assert.throws(() => vnpay.config(), (e) => (e as { status?: number }).status === 503);
   process.env.VNPAY_HASH_SECRET = saved;
 });

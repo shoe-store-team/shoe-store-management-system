@@ -15,7 +15,8 @@ svc._usePrismaForTests(fake.prisma);
 const IP = "127.0.0.1";
 const ORDER_FIELDS = (id: string) => fake.db().order.find((o) => o.id === id)!;
 const PAYMENTS = (orderId: string) => fake.db().payment.filter((p) => p.orderId === orderId);
-const rejects = (p: Promise<unknown>, status: number) => assert.rejects(p, (e: any) => e.status === status);
+const statusOf = (e: unknown) => (e as { status?: number }).status;
+const rejects = (p: Promise<unknown>, status: number) => assert.rejects(p, (e) => statusOf(e) === status);
 const realFetch = globalThis.fetch;
 
 afterEach(() => {
@@ -178,6 +179,29 @@ describe("VNPay Sandbox (IPN, hết hạn, đơn huỷ)", () => {
     assert.equal(ORDER_FIELDS(order.id).paymentStatus, "PAID");
   });
 
+  test("expirePendingPayments: chỉ đóng link đã quá hạn, tiền về muộn vẫn được ghi", async () => {
+    const order = makeOrder({ createdAt: new Date(Date.now() - 20 * 60_000) });
+    const fresh = makeOrder();
+    fake.reset({ order: [order, fresh] });
+    const r = await svc.createPayment("user-1", { orderId: order.id, method: "VNPAY" }, IP);
+    const r2 = await svc.createPayment("user-1", { orderId: fresh.id, method: "VNPAY" }, IP);
+    for (const p of fake.db().payment) p.createdAt = new Date(Date.now() - 20 * 60_000);
+    const old = fake.db().payment.find((p) => p.id === r.id)!;
+    const url = new URL(old.paymentUrl);
+    url.searchParams.set("vnp_ExpireDate", vnpay.vnpDate(new Date(Date.now() - 10 * 60_000)));
+    old.paymentUrl = url.toString();
+
+    assert.equal(await svc.expirePendingPayments(), 1);
+    assert.equal(old.status, "FAILED");
+    assert.equal(old.failureReason, "EXPIRED");
+    assert.equal(ORDER_FIELDS(order.id).paymentStatus, "FAILED");
+    assert.equal(fake.db().payment.find((p) => p.id === r2.id)!.status, "PENDING", "link còn hạn không bị đóng");
+    assert.equal(await svc.expirePendingPayments(), 0, "chạy lại không đóng thêm");
+
+    assert.equal((await svc.ipn(ipnQuery({ id: r.id, amount: 500000 }))).RspCode, "00");
+    assert.equal(ORDER_FIELDS(order.id).paymentStatus, "PAID");
+  });
+
   test("Hết thời gian giữ đơn -> 409, không tạo giao dịch", async () => {
     const order = makeOrder({ createdAt: new Date(Date.now() - 29 * 60_000) }); // còn 1 phút < 3 phút tối thiểu
     fake.reset({ order: [order] });
@@ -187,8 +211,8 @@ describe("VNPay Sandbox (IPN, hết hạn, đơn huỷ)", () => {
 
   test("Đơn bị huỷ (M4 gọi closePaymentsForCancelledOrder) rồi tiền về muộn -> ghi nhận, báo cần hoàn tiền", async () => {
     const { order, r } = await taoLink();
-    await fake.prisma.$transaction(async (tx: any) => {
-      const res = await svc.closePaymentsForCancelledOrder(tx, order.id);
+    await fake.prisma.$transaction(async (tx: typeof fake.prisma) => {
+      const res = await svc.closePaymentsForCancelledOrder(tx as never, order.id);
       assert.deepEqual(res, { closed: 1, alreadyPaid: false });
       await tx.order.update({ where: { id: order.id }, data: { status: "CANCELLED" } });
     });

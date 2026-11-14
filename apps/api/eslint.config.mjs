@@ -16,4 +16,9 @@ export default defineConfig([
       },
     },
   },
+  {
+    // Test dùng database giả trong bộ nhớ nên cần kiểu any
+    files: ["tests/**/*.ts"],
+    rules: { "@typescript-eslint/no-explicit-any": "off" },
+  },
 ]);

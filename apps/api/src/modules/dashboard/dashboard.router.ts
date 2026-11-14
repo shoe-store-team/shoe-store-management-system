@@ -30,7 +30,12 @@ dashboardRouter.get("/summary", authenticateToken, requireAdmin, (req, res, next
     .catch(next);
 });
 
-dashboardRouter.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+// Express nhận diện error handler nhờ đủ 4 tham số, nên phải giữ `next`
+dashboardRouter.use((err: unknown, _req: Request, res: Response, next: NextFunction) => {
+  if (res.headersSent) {
+    next(err);
+    return;
+  }
   if (err instanceof DashboardError) {
     res.status(err.status).json({ message: err.message });
     return;

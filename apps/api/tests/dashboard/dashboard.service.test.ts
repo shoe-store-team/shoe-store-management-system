@@ -17,9 +17,9 @@ test("parseRange theo ngày giờ VN và kiểm tra đầu vào", () => {
   assert.equal(r.start.toISOString(), "2026-10-31T17:00:00.000Z");
   assert.equal(r.end.toISOString(), "2026-11-14T17:00:00.000Z");
   assert.equal(r.days, 14);
-  assert.throws(() => dash.parseRange("2026-11-15", "2026-11-14"), (e: any) => e.status === 400);
-  assert.throws(() => dash.parseRange("2026-02-30"), (e: any) => e.status === 400);
-  assert.throws(() => dash.parseRange("2024-01-01", "2026-11-14"), (e: any) => e.status === 400);
+  assert.throws(() => dash.parseRange("2026-11-15", "2026-11-14"), (e) => (e as { status?: number }).status === 400);
+  assert.throws(() => dash.parseRange("2026-02-30"), (e) => (e as { status?: number }).status === 400);
+  assert.throws(() => dash.parseRange("2024-01-01", "2026-11-14"), (e) => (e as { status?: number }).status === 400);
 });
 
 test("Số liệu: không tính đơn huỷ vào doanh thu, mỗi đơn 1 lần, chia ngày theo giờ VN", async () => {
@@ -29,7 +29,7 @@ test("Số liệu: không tính đơn huỷ vào doanh thu, mỗi đơn 1 lần,
   const d = order("d", "CONFIRMED", "UNPAID", 150000, "2026-11-12T03:00:00Z"); // COD chờ thu
   const e = order("e", "CANCELLED", "UNPAID", 400000, "2026-11-12T04:00:00Z"); // COD của đơn huỷ: không tính
   const old = order("f", "DELIVERED", "PAID", 700000, "2026-09-01T03:00:00Z"); // ngoài khoảng
-  const pay = (id: string, o: any, method: string, status: string, paidAt: string | null) => ({
+  const pay = (id: string, o: ReturnType<typeof order>, method: string, status: string, paidAt: string | null) => ({
     id, orderId: o.id, method, status, amount: o.totalAmount, paidAt: paidAt ? at(paidAt) : null, createdAt: o.createdAt,
   });
   fake.reset({
