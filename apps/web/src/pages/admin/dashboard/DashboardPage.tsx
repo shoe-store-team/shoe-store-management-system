@@ -1,8 +1,8 @@
 export function Page() {
   return (
     <div>
-      <h1>Điều chỉnh tồn kho</h1>
-      <p>Chức năng đang được phát triển.</p>
+      <h1>Long</h1>
+      <p>báo cáo thống kê.</p>
     </div>
   );
 }

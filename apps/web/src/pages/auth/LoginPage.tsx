@@ -28,11 +28,12 @@ export function LoginPage() {
       if (!user) throw new Error("API không trả về thông tin người dùng");
 
       authStore.setAuth(token, {
-        name: user.name,
-        email: user.email,
-        id: user.id,
-        role: user.role,
-      });
+  name: user.name,
+  email: user.email,
+  phone: user.phone,
+  id: user.id,
+  role: user.role,
+});
 
       if (user.role === "ADMIN") {
         navigate("/admin", { replace: true });

@@ -1,136 +1,396 @@
-/*
- * Giao diện thanh toán / đơn hàng chép nguyên giá trị từ thiết kế SoleDay · SoleLab (soleday-soleLab.html).
- * Mọi selector đều nằm trong ".co-page" nên không ảnh hưởng trang khác.
- * Thiết kế dùng chữ rất nhỏ (7–9px). Muốn dễ đọc hơn, đặt --co-zoom (VD: 1.3) ở :root hoặc ngay đây.
- */
-@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap');
+/* =========================================
+   CHECKOUT - ĐỒNG BỘ JSX VÀ TĂNG ĐỘ DỄ ĐỌC
+   ========================================= */
 
-.co-page { zoom: var(--co-zoom, 1); max-width: 1220px; min-height: 70vh; margin: 0 auto; padding: 42px 5vw 90px; color: #20202a; font-family: 'Be Vietnam Pro', sans-serif; }
-.co-page * { box-sizing: border-box; }
-.co-page button, .co-page input, .co-page select { font: inherit; }
-.co-page button { cursor: pointer; }
-.co-page button:disabled { opacity: .5; cursor: not-allowed; }
+/* Nội dung chung */
+.co-page {
+  font-size: 14px;
+  line-height: 1.6;
+}
 
-.co-page .back-link { border: 0; background: none; color: #74736c; font-size: 9px; padding: 0; margin-bottom: 28px; text-decoration: none; display: inline-block; }
-.co-page .section-kicker { color: #9a6f55; font-size: 9px; font-weight: 700; letter-spacing: 2px; margin: 0 0 10px; }
+.co-page textarea {
+  font: inherit;
+  resize: vertical;
+}
 
-/* ---- Thanh toán ---- */
-.co-page .checkout-head { margin-bottom: 30px; }
-.co-page .checkout-head h1 { font-size: 31px; margin: 0; }
-.co-page .checkout-grid { display: grid; grid-template-columns: 1.55fr .75fr; gap: 40px; }
-.co-page .form-panel, .co-page .summary { border-top: 1px solid #d9d8d1; padding-top: 20px; }
-.co-page .form-panel { padding-right: 25px; }
-.co-page .summary h2, .co-page .form-panel h2 { font-size: 13px; margin: 0 0 20px; }
-.co-page .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 35px; }
-.co-page .form-grid label { display: flex; flex-direction: column; gap: 7px; font-size: 8px; font-weight: 600; }
-.co-page .form-grid .full { grid-column: 1 / -1; }
-.co-page .form-grid input, .co-page .form-grid select { border: 1px solid #d9d8d1; background: white; padding: 11px; font-size: 9px; outline: none; border-radius: 0; }
-.co-page .form-grid input:disabled, .co-page .form-grid select:disabled { background: #f4f3ef; color: #888; }
-.co-page .payment-choice { border: 1px solid #d9d8d1; display: flex; gap: 10px; padding: 13px; margin-bottom: 8px; }
-.co-page .payment-choice span { display: flex; flex-direction: column; }
-.co-page .payment-choice strong { font-size: 9px; }
-.co-page .payment-choice small { color: #999; font-size: 8px; margin-top: 4px; }
-.co-page .summary-product { display: flex; gap: 10px; margin-bottom: 18px; }
-.co-page .summary-product img, .co-page .summary-product .ph { width: 50px; height: 58px; object-fit: cover; background: #f0efeb; flex: none; }
-.co-page .summary-product span { display: flex; flex-direction: column; justify-content: center; }
-.co-page .summary-product strong { font-size: 9px; }
-.co-page .summary-product small { color: #999; font-size: 8px; margin-top: 5px; }
-.co-page .sum-row, .co-page .sum-total { display: flex; justify-content: space-between; padding: 9px 0; font-size: 9px; }
-.co-page .sum-row strong { font-weight: 500; }
-.co-page .sum-row.discount { color: #398060; }
-.co-page .sum-total { margin-top: 8px; border-top: 1px solid #ddd; padding-top: 16px; }
-.co-page .sum-total strong { font-size: 14px; }
-.co-page .checkout-button { width: 100%; border: 0; background: #191917; color: white; padding: 13px; margin-top: 18px; display: flex; justify-content: center; align-items: center; gap: 8px; font-size: 9px; font-weight: 600; }
-.co-page .voucher-error { color: #c85252; font-size: 8px; margin: 10px 0 0; line-height: 1.6; }
+.co-page .muted {
+  font-size: 12px;
+  line-height: 1.6;
+}
 
-/* ---- Tài khoản / đơn hàng ---- */
-.co-page .account-top { display: flex; justify-content: space-between; align-items: end; margin-bottom: 35px; }
-.co-page .account-top h1 { margin: 0; font-size: 28px; }
-.co-page .account-top > button { border: 0; background: none; color: #777; text-decoration: underline; font-size: 9px; }
-.co-page .account-grid { display: grid; grid-template-columns: 180px 1fr; gap: 50px; }
-.co-page .account-grid > aside { display: flex; flex-direction: column; align-items: stretch; }
-.co-page .account-grid > aside button { border: 0; border-bottom: 1px solid #e0dfd9; background: none; text-align: left; padding: 12px 2px; font-size: 9px; color: #777; }
-.co-page .account-grid > aside button.active { color: #111; font-weight: 700; }
-.co-page .account-grid section h2 { font-size: 14px; }
-.co-page .order-list-head { display: flex; justify-content: space-between; align-items: center; }
-.co-page .order-list-head span { color: #999; font-size: 8px; }
-.co-page .order-filters { display: flex; gap: 5px; margin: 16px 0; overflow-x: auto; }
-.co-page .order-filters button { border: 1px solid #deddd7; background: white; padding: 7px 10px; font-size: 8px; white-space: nowrap; }
-.co-page .order-filters button.active { background: #191917; color: white; border-color: #191917; }
-.co-page .customer-orders { display: flex; flex-direction: column; gap: 10px; }
-.co-page .order-card { border: 1px solid #dfded8; background: white; }
-.co-page .order-card-head, .co-page .order-card-foot { padding: 11px 13px; display: flex; justify-content: space-between; align-items: center; }
-.co-page .order-card-head { border-bottom: 1px solid #eeede8; }
-.co-page .order-card-head > div { display: flex; flex-direction: column; }
-.co-page .order-card-head strong { font-size: 9px; }
-.co-page .order-card-head div span { color: #999; font-size: 7px; margin-top: 3px; }
-.co-page .order-card-body { padding: 12px 13px; display: grid; grid-template-columns: 55px 1fr auto; gap: 12px; align-items: center; }
-.co-page .order-card-body img, .co-page .order-card-body .ph { width: 55px; height: 62px; object-fit: cover; background: #f0efeb; }
-.co-page .order-card-body > div { display: flex; flex-direction: column; }
-.co-page .order-card-body strong { font-size: 9px; }
-.co-page .order-card-body span, .co-page .order-card-body small { color: #888; font-size: 8px; margin-top: 4px; }
-.co-page .order-card-body small { color: #a06e3f; }
-.co-page .order-card-foot { border-top: 1px solid #eeede8; justify-content: flex-end; gap: 7px; }
-.co-page .order-card-foot button, .co-page .order-detail-actions button { border: 1px solid #deddd7; background: white; padding: 7px 10px; display: flex; align-items: center; gap: 5px; font-size: 8px; }
-.co-page .order-card-foot .pay-button, .co-page .order-detail-actions .pay-button { background: #191917; color: white; border-color: #191917; }
+/* Tiêu đề */
+.co-page .checkout-head {
+  margin-bottom: 32px;
+}
 
-.co-page .status { display: inline-flex; align-items: center; gap: 5px; padding: 5px 7px; border-radius: 10px; font-size: 8px; font-weight: 500; white-space: nowrap; }
-.co-page .status i { width: 5px; height: 5px; border-radius: 50%; }
-.co-page .processing { color: #a65e19; background: #fff2e1; } .co-page .processing i { background: #e99a44; }
-.co-page .paid { color: #168161; background: #e7f7f0; } .co-page .paid i { background: #31aa83; }
-.co-page .pending { color: #5573b1; background: #edf2fc; } .co-page .pending i { background: #6e90d0; }
-.co-page .cancelled { color: #a55e62; background: #f9ecee; } .co-page .cancelled i { background: #d46c72; }
-.co-page .shipping { color: #476f7a; background: #e8f1f2; } .co-page .shipping i { background: #65909a; }
+.co-page .checkout-head h1 {
+  font-size: 30px;
+  line-height: 1.3;
+  font-weight: 600;
+}
 
-.co-page .order-detail-head { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #deddd7; padding-bottom: 16px; }
-.co-page .order-detail-head > div { display: flex; flex-direction: column; }
-.co-page .order-detail-head div > span, .co-page .order-detail-head small { color: #999; font-size: 7px; }
-.co-page .order-detail-head h2 { margin: 3px 0; font-size: 17px !important; }
-.co-page .order-timeline { display: grid; grid-template-columns: repeat(5, 1fr); margin: 28px 0 35px; }
-.co-page .order-timeline > div { position: relative; text-align: center; color: #aaa; font-size: 7px; }
-.co-page .order-timeline > div::before { content: ''; position: absolute; height: 1px; background: #ddd; left: -50%; right: 50%; top: 11px; }
-.co-page .order-timeline > div:first-child::before { display: none; }
-.co-page .order-timeline i { width: 23px; height: 23px; margin: 0 auto 7px; background: #eee; border-radius: 50%; display: grid; place-items: center; font-style: normal; position: relative; z-index: 1; }
-.co-page .order-timeline .done { color: #6f5a43; }
-.co-page .order-timeline .done i, .co-page .order-timeline .done::before { color: white; background: #8a7256; }
-.co-page .cancel-note { margin: 20px 0; padding: 15px; background: #f8eceb; color: #9f5550; display: flex; flex-direction: column; font-size: 9px; }
-.co-page .cancel-note span { font-size: 8px; margin-top: 4px; }
-.co-page .order-detail-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 25px; }
-.co-page .order-detail-grid h3 { font-size: 9px; border-bottom: 1px solid #e4e3de; padding-bottom: 9px; }
-.co-page .order-detail-grid p { color: #777; font-size: 8px; line-height: 1.8; }
-.co-page .detail-order-product { display: grid; grid-template-columns: 55px 1fr auto; gap: 10px; align-items: center; margin-bottom: 12px; }
-.co-page .detail-order-product img, .co-page .detail-order-product .ph { width: 55px; height: 62px; object-fit: cover; background: #f0efeb; }
-.co-page .detail-order-product span { display: flex; flex-direction: column; }
-.co-page .detail-order-product strong { font-size: 8px; }
-.co-page .detail-order-product small { color: #999; font-size: 7px; margin-top: 4px; }
-.co-page .order-payment { background: #f5f3ee; display: flex; justify-content: space-between; padding: 14px; margin-top: 25px; }
-.co-page .order-payment div { display: flex; flex-direction: column; }
-.co-page .order-payment span { color: #999; font-size: 7px; }
-.co-page .order-payment strong { font-size: 9px; margin-top: 4px; }
-.co-page .order-detail-actions { display: flex; justify-content: flex-end; gap: 7px; margin-top: 15px; }
-.co-page .order-detail-actions .cancel-button { color: #a04f4a; border-color: #e3c8c5; }
-.co-page .muted { color: #999; font-size: 9px; }
+.co-page .section-kicker {
+  font-size: 11px;
+}
 
-/* ---- Trang kết quả (thiết kế không có trang này: dựng bằng cùng màu sắc/kiểu chữ) ---- */
-.co-page .co-result { max-width: 440px; margin: 40px auto 0; border: 1px solid #dfded8; background: white; padding: 40px 32px; text-align: center; }
-.co-page .co-result-icon { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; margin: 0 auto 16px; font-size: 22px; font-style: normal; }
-.co-page .co-result-icon.ok { background: #e7f7f0; color: #168161; }
-.co-page .co-result-icon.fail { background: #f9ecee; color: #a55e62; }
-.co-page .co-result-icon.wait { background: #edf2fc; color: #5573b1; }
-.co-page .co-result h1 { font-size: 20px; margin: 0 0 8px; letter-spacing: -.5px; }
-.co-page .co-result > p { color: #77766f; font-size: 9px; line-height: 1.8; margin: 0 0 18px; }
-.co-page .co-facts { background: #f5f3ee; padding: 12px 14px; margin: 18px 0; text-align: left; }
-.co-page .co-facts div { display: flex; justify-content: space-between; padding: 5px 0; font-size: 9px; gap: 14px; }
-.co-page .co-facts span { color: #999; font-size: 8px; }
-.co-page .co-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 7px; margin-top: 8px; }
-.co-page .co-btn { border: 1px solid #deddd7; background: white; color: #20202a; padding: 7px 10px; font-size: 8px; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; }
-.co-page .co-btn.primary { background: #191917; color: white; border-color: #191917; }
+/* Bố cục hai cột */
+.co-page .checkout-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(280px, 0.75fr);
+  gap: 40px;
+  align-items: start;
+}
 
+.co-page .form-panel,
+.co-page .summary {
+  border-top: 1px solid #d9d8d1;
+  padding-top: 22px;
+}
+
+.co-page .form-panel {
+  padding-right: 25px;
+}
+
+.co-page .form-panel section + section {
+  margin-top: 35px;
+}
+
+.co-page .form-panel h2,
+.co-page .summary h2 {
+  font-size: 17px;
+  font-weight: 600;
+  margin: 0 0 20px;
+}
+
+/* Các trường nhập liệu */
+.co-page .form-grid {
+  gap: 18px;
+  margin-bottom: 28px;
+}
+
+.co-page .form-grid label {
+  font-size: 13px;
+  font-weight: 600;
+  gap: 8px;
+}
+
+.co-page .form-grid input,
+.co-page .form-grid select,
+.co-page .form-grid textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #d9d8d1;
+  background: #fff;
+  padding: 12px;
+  border-radius: 2px;
+  color: #20202a;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.co-page .form-grid input:focus,
+.co-page .form-grid select:focus,
+.co-page .form-grid textarea:focus {
+  border-color: #9a6f55;
+}
+
+.co-page .form-grid textarea {
+  line-height: 1.6;
+}
+
+.co-page .form-grid input::placeholder,
+.co-page .form-grid textarea::placeholder {
+  color: #aaa9a2;
+}
+
+/* Phương thức thanh toán */
+.co-page .payment-choice {
+  align-items: flex-start;
+  padding: 15px;
+  gap: 12px;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.co-page .payment-choice:has(input:checked) {
+  border-color: #9a6f55;
+  background: #faf8f5;
+}
+
+.co-page .payment-choice input {
+  margin-top: 4px;
+  accent-color: #191917;
+}
+
+.co-page .payment-choice strong {
+  font-size: 13px;
+}
+
+.co-page .payment-choice small {
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* Sản phẩm trong tóm tắt đơn hàng */
+.co-page .summary-product {
+  display: grid;
+  grid-template-columns: 50px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.co-page .summary-product .ph {
+  width: 50px;
+  height: 58px;
+  background: #f0efeb;
+}
+
+.co-page .summary-product > span {
+  min-width: 0;
+}
+
+.co-page .summary-product strong {
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.co-page .summary-product small {
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+/* Tổng tiền */
+.co-page .sum-row {
+  font-size: 13px;
+  gap: 12px;
+}
+
+.co-page .sum-row strong {
+  text-align: right;
+}
+
+.co-page .sum-total {
+  font-size: 14px;
+}
+
+.co-page .sum-total strong {
+  font-size: 17px;
+}
+
+/* Nút đặt hàng */
+.co-page .checkout-button {
+  min-height: 46px;
+  padding: 13px 18px;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+}
+
+.co-page .checkout-button:hover:not(:disabled) {
+  background: #9a6f55;
+}
+
+/* Thông báo lỗi */
+.co-page .voucher-error {
+  border: 1px solid #efd0cd;
+  background: #fff7f6;
+  padding: 11px 14px;
+  font-size: 13px;
+  margin: 12px 0 20px;
+}
+
+/* Trang kết quả */
+.co-page .co-result {
+  max-width: 560px;
+  padding: 38px;
+}
+
+.co-page .co-result h1 {
+  font-size: 23px;
+}
+
+.co-page .co-result > p {
+  font-size: 13px;
+}
+
+.co-page .co-facts div {
+  align-items: flex-start;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.co-page .co-facts span {
+  flex: 0 0 38%;
+  font-size: 12px;
+}
+
+.co-page .co-facts strong {
+  min-width: 0;
+  text-align: right;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+
+.co-page .co-btn {
+  padding: 10px 14px;
+  font-size: 12px;
+}
+
+/* Responsive */
 @media (max-width: 800px) {
-  .co-page .checkout-grid { grid-template-columns: 1fr; }
-  .co-page .form-panel { padding-right: 0; }
-  .co-page .account-grid { grid-template-columns: 1fr; gap: 20px; }
-  .co-page .account-grid > aside { flex-direction: row; overflow-x: auto; }
-  .co-page .account-grid > aside button { white-space: nowrap; padding: 10px; }
-  .co-page .order-detail-grid { grid-template-columns: 1fr; }
+  .co-page {
+    padding: 28px 18px 60px;
+  }
+
+  .co-page .checkout-grid {
+    grid-template-columns: 1fr;
+    gap: 30px;
+  }
+
+  .co-page .form-panel {
+    padding-right: 0;
+  }
+
+  .co-page .summary {
+    border-top: 1px solid #d9d8d1;
+  }
+}
+
+@media (max-width: 520px) {
+  .co-page .checkout-head h1 {
+    font-size: 25px;
+  }
+
+  .co-page .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .co-page .form-grid .full {
+    grid-column: auto;
+  }
+
+  .co-page .co-result {
+    padding: 25px 18px;
+  }
+}
+
+/* Hình ảnh sản phẩm trong phần tóm tắt đơn hàng */
+.co-page .summary-product {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.co-page .summary-product-image {
+  width: 76px;
+  height: 86px;
+  overflow: hidden;
+  background: #f3f2ef;
+  border-radius: 4px;
+}
+
+.co-page .summary-product-image img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.co-page .summary-product-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: #888;
+  font-size: 10px;
+}
+
+.co-page .summary-product-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 5px;
+}
+
+.co-page .summary-product-info strong {
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.co-page .summary-product-info small {
+  font-size: 11px;
+  line-height: 1.5;
+  color: #777;
+}
+
+.co-page .summary-product-price {
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* Sửa bố cục phương thức thanh toán COD và VNPay */
+.co-page .payment-choice {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+  border: 1px solid #dedbd5;
+  background: #fff;
+}
+
+.co-page .payment-choice input {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+  margin: 3px 0 0;
+}
+
+.co-page .payment-choice span {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  gap: 5px;
+}
+
+.co-page .payment-choice strong {
+  display: block;
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.co-page .payment-choice small {
+  display: block;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  color: #777;
+}
+
+@media (max-width: 520px) {
+  .co-page .summary-product {
+    grid-template-columns: 62px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .co-page .summary-product-image {
+    width: 62px;
+    height: 72px;
+  }
+
+  .co-page .summary-product-price {
+    grid-column: 2;
+  }
 }
