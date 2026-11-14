@@ -8,6 +8,7 @@ import * as svc from "../../src/modules/payments/payment.service";
 import * as vnpay from "../../src/modules/payments/vnpay";
 import { createFakePrisma } from "./fake-prisma";
 import { SECRET, ipnQuery, makeOrder, queryDrResponse, useMockEnv, useVnpayEnv } from "./helpers";
+import { renderMockGateway } from "../../src/modules/payments/mock-gateway.html";
 
 const fake = createFakePrisma();
 svc._usePrismaForTests(fake.prisma);
@@ -202,6 +203,20 @@ describe("VNPay Sandbox (IPN, hết hạn, đơn huỷ)", () => {
     assert.equal(ORDER_FIELDS(order.id).paymentStatus, "PAID");
   });
 
+  test("expirePendingPayments: lỗi database chỉ ghi log, không ném lỗi làm sập server", async () => {
+    fake.reset();
+    const findMany = fake.prisma.payment.findMany;
+    const saved = console.error;
+    console.error = () => {};
+    fake.prisma.payment.findMany = async () => { throw new Error("Environment variable not found: DATABASE_URL"); };
+    try {
+      assert.equal(await svc.expirePendingPayments(), 0);
+    } finally {
+      fake.prisma.payment.findMany = findMany;
+      console.error = saved;
+    }
+  });
+
   test("Hết thời gian giữ đơn -> 409, không tạo giao dịch", async () => {
     const order = makeOrder({ createdAt: new Date(Date.now() - 29 * 60_000) }); // còn 1 phút < 3 phút tối thiểu
     fake.reset({ order: [order] });
@@ -264,5 +279,73 @@ describe("VNPay Sandbox (IPN, hết hạn, đơn huỷ)", () => {
     }
     assert.ok(logs.length > 0);
     for (const text of [...logs, JSON.stringify(r), JSON.stringify(svc.getConfig())]) assert.ok(!text.includes(SECRET));
+  });
+});
+
+describe("Cổng giả lập có mã QR (PAYMENT_MOCK_QR=true)", () => {
+  beforeEach(() => {
+    useMockEnv();
+    process.env.PAYMENT_MOCK_QR = "true";
+  });
+  afterEach(() => {
+    delete process.env.PAYMENT_MOCK_QR;
+  });
+
+  test("Tạo giao dịch PENDING có link cổng giả lập, chưa thanh toán ngay", async () => {
+    const order = makeOrder();
+    fake.reset({ order: [order] });
+    const r = await svc.createPayment("user-1", { orderId: order.id, method: "VNPAY" }, IP);
+    assert.equal(r.status, "PENDING");
+    assert.ok(r.paymentUrl?.startsWith(`http://localhost:3000/api/payments/mock/${r.reference}?`));
+    assert.ok(r.expiresAt, "có thời hạn để đếm ngược");
+    assert.equal(svc.getConfig().mockQr, true);
+    assert.equal(ORDER_FIELDS(order.id).paymentStatus, "PENDING");
+  });
+
+  test("Xác nhận thành công -> PAID; bấm lại không ghi nhận lần 2; đối soát không gọi VNPay", async () => {
+    const order = makeOrder();
+    fake.reset({ order: [order] });
+    const r = await svc.createPayment("user-1", { orderId: order.id, method: "VNPAY" }, IP);
+    globalThis.fetch = (async () => { throw new Error("không được gọi VNPay"); }) as typeof fetch;
+    assert.equal((await svc.reconcile("user-1", r.id)).status, "PENDING");
+    const done = await svc.completeMockPayment(r.reference, "SUCCESS");
+    assert.equal(done.status, "PAID");
+    assert.equal(done.orderStatus, "CONFIRMED");
+    const snapshot = JSON.stringify(fake.db());
+    assert.equal((await svc.completeMockPayment(r.reference, "SUCCESS")).status, "PAID");
+    assert.equal((await svc.completeMockPayment(r.reference, "FAILED")).status, "PAID");
+    assert.equal(JSON.stringify(fake.db()), snapshot, "gọi lặp không đổi dữ liệu");
+    assert.equal((await svc.byReference("user-1", r.reference)).status, "PAID");
+  });
+
+  test("Huỷ trên cổng giả lập -> FAILED và thanh toán lại được", async () => {
+    const order = makeOrder();
+    fake.reset({ order: [order] });
+    const r = await svc.createPayment("user-1", { orderId: order.id, method: "VNPAY" }, IP);
+    const res = await svc.completeMockPayment(r.reference, "FAILED");
+    assert.equal(res.status, "FAILED");
+    assert.equal(res.failureReason, "VNPAY_24");
+    const retry = await svc.createPayment("user-1", { orderId: order.id, method: "VNPAY" }, IP);
+    assert.notEqual(retry.id, r.id);
+    assert.equal(retry.status, "PENDING");
+  });
+
+  test("Tắt PAYMENT_MOCK_QR hoặc dùng VNPay thật thì cổng giả lập trả 404; mock thường vẫn thành công ngay", async () => {
+    const order = makeOrder();
+    fake.reset({ order: [order] });
+    const r = await svc.createPayment("user-1", { orderId: order.id, method: "VNPAY" }, IP);
+    delete process.env.PAYMENT_MOCK_QR;
+    await rejects(svc.completeMockPayment(r.reference, "SUCCESS"), 404);
+    const o2 = makeOrder();
+    fake.reset({ order: [o2] });
+    assert.equal((await svc.createPayment("user-1", { orderId: o2.id, method: "VNPAY" }, IP)).status, "PAID");
+  });
+
+  test("Trang cổng giả lập hiển thị số tiền, mã đơn và chống chèn mã HTML", () => {
+    const html = renderMockGateway({ reference: "abc123", orderCode: "<script>x</script>", amount: 950000, status: "PENDING", expiresAt: null });
+    assert.ok(html.includes("950.000"));
+    assert.ok(html.includes("&lt;script&gt;x&lt;/script&gt;"));
+    assert.ok(!html.includes("<script>x</script>"));
+    assert.ok(html.includes("KHÔNG TRỪ TIỀN THẬT"));
   });
 });
