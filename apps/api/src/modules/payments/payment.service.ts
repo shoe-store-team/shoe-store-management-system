@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 import {
   Prisma,
   type Order,
@@ -10,6 +11,19 @@ import { prisma } from '../../config/prisma';
 import { PaymentError } from './payment.errors';
 import * as vnpay from './vnpay';
 import { cancelOrder } from '../orders/order.service';
+=======
+import { Prisma, type Order, type Payment } from "@prisma/client";
+import { randomUUID } from "node:crypto";
+import { prisma as realPrisma } from "../../config/prisma"; // đổi nếu prisma.ts export tên khác
+
+// Test thay bằng database giả qua _usePrismaForTests (code chạy thật luôn dùng realPrisma).
+let prisma = realPrisma;
+export function _usePrismaForTests(client: unknown) {
+  prisma = client as typeof realPrisma;
+}
+import { PaymentError } from "./payment.errors";
+import * as vnpay from "./vnpay";
+>>>>>>> Stashed changes
 
 type Tx = Prisma.TransactionClient;
 
@@ -92,10 +106,17 @@ export function getConfig() {
    HÀM HỖ TRỢ
 ========================================================= */
 
+<<<<<<< Updated upstream
 const lockOrder = (tx: Tx, orderId: string) =>
   tx.$executeRaw`
     SELECT pg_advisory_xact_lock(hashtext(${orderId}::text))
   `;
+=======
+// Khoá theo đơn hàng: 2 request song song trên cùng đơn chạy tuần tự.
+// (orders.service dùng CÙNG biểu thức hashtext để huỷ đơn không đụng thanh toán)
+export const lockOrder = (tx: Tx, orderId: string) =>
+  tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${orderId}::text))`;
+>>>>>>> Stashed changes
 
 const orderCodeOf = (orderId: string) =>
   `DH-${orderId.slice(0, 8).toUpperCase()}`;
@@ -134,6 +155,7 @@ const sameAmount = (
   );
 };
 
+<<<<<<< Updated upstream
 const validTxn = (
   transactionNo: string | undefined,
   date: Date | null,
@@ -170,6 +192,13 @@ export function toResponse(
   payment: Payment,
   order: Pick<Order, 'status' | 'paymentStatus'>,
 ) {
+=======
+export function toResponse(payment: Payment, order: Pick<Order, "status" | "paymentStatus">) {
+  const expired =
+    payment.method === "VNPAY" &&
+    ((payment.status === "PENDING" && Boolean(payment.paymentUrl) && isExpired(payment)) ||
+      (payment.status === "FAILED" && payment.failureReason === "EXPIRED"));
+>>>>>>> Stashed changes
   return {
     id: payment.id,
     orderId: payment.orderId,
@@ -195,6 +224,11 @@ export function toResponse(
         : null,
 
     expiresAt: expiryOf(payment)?.toISOString() ?? null,
+    // VD: VNPAY_24 (khách huỷ), EXPIRED, SWITCHED (đổi sang COD), ORDER_CANCELLED
+    failureReason: payment.status === "FAILED" ? payment.failureReason : null,
+    expired,
+    // Đơn đã huỷ nhưng tiền đã về: admin cần hoàn tiền thủ công
+    refundRequired: order.status === "CANCELLED" && order.paymentStatus === "PAID",
   };
 }
 
@@ -1180,6 +1214,7 @@ export async function reconcile(
   return done.data;
 }
 
+<<<<<<< Updated upstream
 /* =========================================================
    TỰ ĐỘNG HỦY ĐƠN VNPAY HẾT HẠN
 ========================================================= */
@@ -1289,3 +1324,30 @@ export async function expirePendingPayments() {
 
   return expiredCount;
 }
+=======
+/* ---------------------------------------------------------------- dành cho module orders (M4/M5) */
+
+/**
+ * M4 gọi hàm này BÊN TRONG transaction huỷ đơn, TRƯỚC khi đổi Order.status = CANCELLED và hoàn kho:
+ *
+ *   await prisma.$transaction(async (tx) => {
+ *     const { alreadyPaid } = await closePaymentsForCancelledOrder(tx, orderId);
+ *     if (alreadyPaid) throw new Error("Đơn đã thanh toán, cần hoàn tiền trước khi huỷ");   // tuỳ nghiệp vụ
+ *     const o = await tx.order.updateMany({ where: { id: orderId, status: { not: "CANCELLED" } }, data: { status: "CANCELLED" } });
+ *     if (o.count === 1) { ...hoàn kho đúng 1 lần... }
+ *   });
+ *
+ * - Khoá đơn bằng cùng advisory lock với payments, nên không chạy chen với IPN/đối soát.
+ * - Đóng mọi giao dịch PENDING với lý do ORDER_CANCELLED. Nếu tiền VNPay vẫn về muộn,
+ *   IPN/đối soát vẫn ghi nhận (paymentStatus = PAID, status giữ CANCELLED) để admin hoàn tiền.
+ */
+export async function closePaymentsForCancelledOrder(tx: Tx, orderId: string) {
+  await lockOrder(tx, orderId);
+  const order = await tx.order.findUnique({ where: { id: orderId }, select: { paymentStatus: true } });
+  const { count } = await tx.payment.updateMany({
+    where: { orderId, status: "PENDING" },
+    data: { status: "FAILED", failureReason: "ORDER_CANCELLED" },
+  });
+  return { closed: count, alreadyPaid: order?.paymentStatus === "PAID" };
+}
+>>>>>>> Stashed changes
