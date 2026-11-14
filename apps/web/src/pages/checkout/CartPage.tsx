@@ -52,7 +52,7 @@ export function CartPage() {
 
   const khongThanhToanDuoc = gio.items.length === 0 || gio.items.some((i) => !i.available);
   const coSanPhamLoi = gio.items.some((i) => !i.available);
-  const tongCuoi = giam ? giam.total : gio.subtotal;
+  const tongCuoi = giam ? giam.total : gio.payableSubtotal;
   const boMa = () => {
     setGiam(null);
     setLoiMa('');
@@ -165,7 +165,7 @@ export function CartPage() {
             <dl className="gh-dong-tien">
               <div>
                 <dt>Tạm tính (trước giảm giá)</dt>
-                <dd>{dinhDangTien(gio.subtotal)}</dd>
+                <dd>{dinhDangTien(gio.payableSubtotal)}</dd>
               </div>
               {giam && (
                 <div className="gh-dong-tien__giam">
