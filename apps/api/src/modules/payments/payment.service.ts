@@ -27,6 +27,20 @@ const CLOSED_BY_SYSTEM = ["EXPIRED", "SWITCHED", "ORDER_CANCELLED"];
 
 const holdMinutes = () => Number(process.env.ORDER_HOLD_MINUTES) || 30;
 
+/** Cổng giả lập có mã QR: chỉ khi PAYMENT_PROVIDER=mock, PAYMENT_MOCK_QR=true và không phải production. */
+const mockQrEnabled = () => process.env.PAYMENT_MOCK_QR === "true" && process.env.NODE_ENV !== "production";
+/** Địa chỉ backend mà điện thoại/trình duyệt mở được (mặc định lấy origin của VNPAY_RETURN_URL). */
+function mockBaseUrl() {
+  const raw = process.env.PAYMENT_MOCK_BASE_URL?.trim() || process.env.VNPAY_RETURN_URL?.trim() || "http://localhost:3000";
+  try {
+    return new URL(raw).origin;
+  } catch {
+    return "http://localhost:3000";
+  }
+}
+const mockUrl = (paymentId: string, now: Date, expires: Date) =>
+  `${mockBaseUrl()}/api/payments/mock/${vnpay.toTxnRef(paymentId)}?vnp_CreateDate=${vnpay.vnpDate(now)}&vnp_ExpireDate=${vnpay.vnpDate(expires)}`;
+
 /* ---------------------------------------------------------------- cấu hình */
 
 export function getConfig() {
@@ -43,6 +57,7 @@ export function getConfig() {
     channels: ["VNPAYQR", "VNBANK", "INTCARD"],
     holdMinutes: holdMinutes(),
     allowSimulate: provider === "mock" && process.env.PAYMENT_MOCK_ALLOW_OVERRIDE === "true",
+    mockQr: provider === "mock" && mockQrEnabled(), // true = mock hiện mã QR + cổng giả lập thay vì thành công ngay
   };
 }
 
@@ -188,7 +203,9 @@ export async function createPayment(userId: string, input: CreatePaymentInput, i
 
       /* ---- Thanh toán trực tuyến (VNPay / mock / đơn 0đ) ---- */
       const free = amount === 0;
-      const instant = free || provider === "mock";
+      // mock + PAYMENT_MOCK_QR=true: tạo giao dịch PENDING có mã QR, khách xác nhận trên cổng giả lập
+      const mockQr = provider === "mock" && mockQrEnabled() && !input.simulateResult && !free;
+      const instant = free || (provider === "mock" && !mockQr);
       // Link chỉ sống tới hết thời gian giữ hàng của đơn (mặc định 30 phút kể từ lúc đặt)
       const expires = new Date(order.createdAt.getTime() + holdMinutes() * 60_000);
       if (!instant && expires.getTime() - now.getTime() < MIN_LINK_MS)
@@ -196,7 +213,9 @@ export async function createPayment(userId: string, input: CreatePaymentInput, i
 
       const paymentUrl = instant
         ? null
-        : vnpay.createUrl({
+        : mockQr
+          ? mockUrl(id, now, expires)
+          : vnpay.createUrl({
             amount,
             txnRef: vnpay.toTxnRef(id),
             orderInfo: `Thanh toan don hang ${orderCodeOf(order.id)}`,
@@ -287,6 +306,8 @@ export async function reconcile(userId: string, id: string) {
   if (!payment) throw new PaymentError(404, "Không tìm thấy giao dịch.");
   if ((payment.status !== "PENDING" && !isClosedBySystem(payment)) || payment.method !== "VNPAY" || !payment.paymentUrl)
     return toResponse(payment, payment.order);
+  // Giao dịch của cổng giả lập: không có gì để hỏi VNPay, trả trạng thái hiện tại
+  if (!vnpay.isGatewayUrl(payment.paymentUrl)) return toResponse(payment, payment.order);
 
   const createDate = new URL(payment.paymentUrl).searchParams.get("vnp_CreateDate");
   if (!createDate) throw new PaymentError(409, "Giao dịch thiếu thời gian khởi tạo.");
@@ -315,6 +336,45 @@ export async function reconcile(userId: string, id: string) {
   });
 }
 
+/* ---------------------------------------------------------------- cổng thanh toán giả lập (chỉ để demo) */
+
+async function findMockPayment(ref: string) {
+  if (getConfig().provider !== "mock" || !mockQrEnabled()) throw new PaymentError(404, "Cổng giả lập chưa được bật.");
+  const id = vnpay.fromTxnRef(ref);
+  const payment = id ? await prisma.payment.findUnique({ where: { id }, include: { order: true } }) : null;
+  if (!payment || payment.method !== "VNPAY" || !payment.paymentUrl || vnpay.isGatewayUrl(payment.paymentUrl))
+    throw new PaymentError(404, "Không tìm thấy giao dịch.");
+  return payment;
+}
+
+/** Thông tin hiển thị trên trang cổng giả lập (không cần đăng nhập: điện thoại quét mã không có token). */
+export async function getMockPayment(ref: string) {
+  const payment = await findMockPayment(ref);
+  return toResponse(payment, payment.order);
+}
+
+/** Cổng giả lập báo kết quả, xử lý giống IPN: khoá đơn, gọi lặp không ghi nhận 2 lần. */
+export async function completeMockPayment(ref: string, result: "SUCCESS" | "FAILED") {
+  const found = await findMockPayment(ref);
+  return prisma.$transaction(async (tx) => {
+    await lockOrder(tx, found.orderId);
+    const current = await tx.payment.findUniqueOrThrow({ where: { id: found.id } });
+    const order = await tx.order.findUniqueOrThrow({ where: { id: found.orderId } });
+    const reopen = isClosedBySystem(current);
+    if (current.status !== "PENDING" && !reopen) return toResponse(current, order); // đã có kết quả
+    if (current.status === "PENDING" && isExpired(current)) throw new PaymentError(409, "Mã thanh toán đã hết hạn.");
+    const success = result === "SUCCESS";
+    if (!success && reopen) return toResponse(current, order);
+    const done = await finalize(tx, current, order, {
+      success,
+      transactionNo: String(Date.now()).slice(-10),
+      paidAt: new Date(),
+      code: success ? "00" : "24",
+    });
+    return toResponse(done.payment, done.order);
+  });
+}
+
 /* ---------------------------------------------------------------- dọn link hết hạn (server.ts gọi định kỳ) */
 
 /**
@@ -324,11 +384,18 @@ export async function reconcile(userId: string, id: string) {
  * - Mỗi đơn xử lý trong transaction riêng, có khoá đơn, nên không chạy chen với IPN.
  */
 export async function expirePendingPayments(now: Date = new Date()) {
-  const candidates = await prisma.payment.findMany({
-    where: { method: "VNPAY", status: "PENDING", createdAt: { lt: new Date(now.getTime() - GRACE_MS) } },
-    select: { id: true, orderId: true },
-    take: 200,
-  });
+  // Chạy nền: lỗi (VD mất kết nối DB) chỉ ghi log, không được làm sập server.
+  let candidates: { id: string; orderId: string }[];
+  try {
+    candidates = await prisma.payment.findMany({
+      where: { method: "VNPAY", status: "PENDING", createdAt: { lt: new Date(now.getTime() - GRACE_MS) } },
+      select: { id: true, orderId: true },
+      take: 200,
+    });
+  } catch (e) {
+    console.error("[payments] Không quét được giao dịch hết hạn:", e instanceof Error ? e.message : e);
+    return 0;
+  }
   let expired = 0;
   for (const c of candidates) {
     try {

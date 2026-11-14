@@ -4,6 +4,7 @@ import { authenticateToken } from "../../middlewares/auth.middleware";
 import { PaymentError } from "./payment.errors";
 import * as payments from "./payment.service";
 import { extractParams, verify } from "./vnpay";
+import { renderMockGateway } from "./mock-gateway.html";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const METHODS: unknown[] = ["COD", "VNPAY"];
@@ -58,6 +59,19 @@ paymentRouter.get("/vnpay/return", (req, res) => {
   }
   res.redirect(303, target.toString());
 });
+
+// Cổng thanh toán giả lập (chỉ bật khi PAYMENT_PROVIDER=mock và PAYMENT_MOCK_QR=true). Không gắn auth:
+// điện thoại quét mã QR không có token, giống như cổng VNPay thật.
+paymentRouter.get("/mock/:ref", wrap(async (req, res) => {
+  const p = await payments.getMockPayment(String(req.params.ref));
+  res.type("html").send(renderMockGateway(p));
+}));
+
+paymentRouter.post("/mock/:ref/complete", wrap(async (req, res) => {
+  const result = (req.body as Record<string, unknown> | undefined)?.result;
+  if (result !== "SUCCESS" && result !== "FAILED") throw new PaymentError(400, "result phải là SUCCESS hoặc FAILED.");
+  res.json(await payments.completeMockPayment(String(req.params.ref), result));
+}));
 
 paymentRouter.get("/reference/:ref", authenticateToken, wrap(async (req, res) => {
   res.json(await payments.byReference(req.authUser!.id, String(req.params.ref)));
