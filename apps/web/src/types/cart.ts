@@ -18,6 +18,7 @@ export type GioHang = {
   items: DongGioHang[];
   itemCount: number;
   subtotal: number;
+  payableSubtotal: number;
 };
 
 export type ChiTietSanPham = {

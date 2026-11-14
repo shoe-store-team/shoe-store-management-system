@@ -44,8 +44,12 @@ const toDto = (items: CartItemFull[]) => {
           : null,
     };
   });
-  const subtotal = lines.reduce((sum, l) => sum + l.lineTotal, 0);
-  return { items: lines, itemCount: lines.length, subtotal };
+    const subtotal = lines.reduce((sum, l) => sum + l.lineTotal, 0);
+  // Chỉ gồm các dòng còn mua được: dùng để tính giảm giá và hiển thị tổng
+  const payableSubtotal = lines
+    .filter((l) => l.available)
+    .reduce((sum, l) => sum + l.lineTotal, 0);
+  return { items: lines, itemCount: lines.length, subtotal, payableSubtotal };
 };
 
 export async function getCart(userId: string) {
@@ -83,10 +87,16 @@ export async function addItem(userId: string, variantId: unknown, quantity: unkn
     );
   }
 
-  await prisma.cartItem.upsert({
-    where: { userId_variantId: { userId, variantId } },
-    create: { userId, variantId, quantity: qty },
-    update: { quantity: { increment: qty } },
+    await prisma.$transaction(async (tx) => {
+    const saved = await tx.cartItem.upsert({
+      where: { userId_variantId: { userId, variantId } },
+      create: { userId, variantId, quantity: qty },
+      update: { quantity: { increment: qty } },
+    });
+    // Kiểm tra lại sau khi ghi: nếu hai request chạy đồng thời làm vượt tồn thì rollback
+    if (saved.quantity > variant.stock) {
+      throw new HttpError(400, `Chỉ còn ${variant.stock} sản phẩm trong kho`);
+    }
   });
   return getCart(userId);
 }
