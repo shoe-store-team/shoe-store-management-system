@@ -83,10 +83,16 @@ export async function addItem(userId: string, variantId: unknown, quantity: unkn
     );
   }
 
-  await prisma.cartItem.upsert({
-    where: { userId_variantId: { userId, variantId } },
-    create: { userId, variantId, quantity: qty },
-    update: { quantity: { increment: qty } },
+    await prisma.$transaction(async (tx) => {
+    const saved = await tx.cartItem.upsert({
+      where: { userId_variantId: { userId, variantId } },
+      create: { userId, variantId, quantity: qty },
+      update: { quantity: { increment: qty } },
+    });
+    // Kiểm tra lại sau khi ghi: nếu hai request chạy đồng thời làm vượt tồn thì rollback
+    if (saved.quantity > variant.stock) {
+      throw new HttpError(400, `Chỉ còn ${variant.stock} sản phẩm trong kho`);
+    }
   });
   return getCart(userId);
 }
