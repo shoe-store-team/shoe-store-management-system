@@ -55,7 +55,6 @@ const formatAddress = (address: CustomerAddress) => {
 
 export function CheckoutPage() {
   const navigate = useNavigate();
-const location = useLocation();
 
   // =========================================
   // 1. DỮ LIỆU GIỎ HÀNG VÀ KHÁCH HÀNG
