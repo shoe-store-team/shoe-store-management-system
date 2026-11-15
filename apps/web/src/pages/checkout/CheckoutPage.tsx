@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import {useNavigate } from 'react-router-dom';
 
 import { cartService } from '../../services/cartService';
 import { customerService } from '../../services/customerService';
