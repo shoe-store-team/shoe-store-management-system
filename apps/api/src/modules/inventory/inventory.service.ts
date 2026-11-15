@@ -613,26 +613,46 @@ export class InventoryService {
       { isolationLevel: "Serializable" },
     );
   }
-  // 1. Trừ tồn kho nguyên tử khi tạo/xác nhận đơn hàng (M4 gọi)
+  // 1. Trừ tồn kho nguyên tử khi tạo/xác nhận đơn hàng (lấy số lượng trực tiếp từ orderItems trong DB)
   async deductStockForOrder(data: {
     orderId: string;
     actorId: string;
-    items: { variantId: string; quantity: number }[];
     reason?: string;
   }) {
-    if (!data.items.length) {
-      throw new BadRequestException("Đơn hàng không có sản phẩm để trừ kho!");
-    }
-
     return this.prisma.$transaction(
       async (tx) => {
-        // Chống trừ tồn 2 lần cho cùng 1 đơn hàng
+        // Kiểm tra đơn hàng tồn tại và lấy danh sách orderItems từ database
+        const order = await tx.order.findUnique({
+          where: { id: data.orderId },
+          include: { items: true },
+        });
+
+        if (!order) {
+          throw new NotFoundException(
+            `Đơn hàng ${data.orderId} không tồn tại!`,
+          );
+        }
+
+        if (order.status === "CANCELLED") {
+          throw new BadRequestException(
+            "Không thể trừ tồn kho cho đơn hàng đã bị hủy!",
+          );
+        }
+
+        if (!order.items.length) {
+          throw new BadRequestException(
+            "Đơn hàng không có sản phẩm trong orderItems để trừ kho!",
+          );
+        }
+
+        // Kiểm tra đơn đã trừ kho chưa (chống trừ tồn 2 lần cho cùng 1 đơn hàng)
         const existingOut = await tx.inventoryDocument.findFirst({
           where: {
             orderId: data.orderId,
             type: InventoryDocumentType.ORDER_OUT,
             status: InventoryDocumentStatus.COMPLETED,
           },
+          include: { items: true },
         });
         if (existingOut) {
           return {
@@ -642,6 +662,26 @@ export class InventoryService {
           };
         }
 
+        // Gom số lượng cần trừ theo từng biến thể từ orderItems trong DB
+        const quantityByVariantId = new Map<string, number>();
+        for (const orderItem of order.items) {
+          if (!orderItem.variantId) {
+            throw new BadRequestException(
+              `Sản phẩm "${orderItem.productName}" trong đơn hàng không có mã biến thể hợp lệ!`,
+            );
+          }
+          if (!Number.isInteger(orderItem.quantity) || orderItem.quantity <= 0) {
+            throw new BadRequestException(
+              "Số lượng đặt trong đơn hàng phải là số nguyên lớn hơn 0!",
+            );
+          }
+          quantityByVariantId.set(
+            orderItem.variantId,
+            (quantityByVariantId.get(orderItem.variantId) ?? 0) +
+              orderItem.quantity,
+          );
+        }
+
         const itemSnapshots: {
           variantId: string;
           quantity: number;
@@ -649,43 +689,39 @@ export class InventoryService {
           stockAfter: number;
         }[] = [];
 
-        for (const item of data.items) {
-          if (!Number.isInteger(item.quantity) || item.quantity <= 0) {
-            throw new BadRequestException("Số lượng đặt phải là số nguyên lớn hơn 0!");
-          }
-
+        for (const [variantId, quantity] of quantityByVariantId.entries()) {
           const currentVariant = await tx.productVariant.findUnique({
-            where: { id: item.variantId },
+            where: { id: variantId },
           });
           if (!currentVariant || !currentVariant.isActive) {
             throw new NotFoundException(
-              `Biến thể ${item.variantId} không tồn tại hoặc ngừng bán!`,
+              `Biến thể ${variantId} không tồn tại hoặc ngừng bán!`,
             );
           }
 
           // Kiểm tra và trừ tồn nguyên tử (Atomic check: stock >= quantity)
           const updated = await tx.productVariant.updateMany({
             where: {
-              id: item.variantId,
+              id: variantId,
               isActive: true,
-              stock: { gte: item.quantity },
+              stock: { gte: quantity },
             },
             data: {
-              stock: { decrement: item.quantity },
+              stock: { decrement: quantity },
             },
           });
 
           if (updated.count !== 1) {
             throw new BadRequestException(
-              `Biến thể (size ${currentVariant.size} - ${currentVariant.color}) không đủ tồn kho (còn ${currentVariant.stock}, cần ${item.quantity})!`,
+              `Biến thể (size ${currentVariant.size} - ${currentVariant.color}) không đủ tồn kho (còn ${currentVariant.stock}, cần ${quantity})!`,
             );
           }
 
           itemSnapshots.push({
-            variantId: item.variantId,
-            quantity: item.quantity,
+            variantId,
+            quantity,
             stockBefore: currentVariant.stock,
-            stockAfter: currentVariant.stock - item.quantity,
+            stockAfter: currentVariant.stock - quantity,
           });
         }
 
