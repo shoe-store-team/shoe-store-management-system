@@ -580,3 +580,47 @@
     width: 100%;
   }
 }
+
+/* Thông báo áp dụng mã khuyến mãi */
+.co-promotion {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.co-promotion input {
+  flex: 1;
+  min-width: 0;
+}
+
+.co-promotion-success {
+  margin-top: 10px;
+  color: #16803c;
+  font-size: 14px;
+}
+
+.co-success-message {
+  margin: 12px 0;
+  color: #16803c;
+}
+
+/* Địa chỉ đã lưu */
+.co-page select {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: #fff;
+  font: inherit;
+}
+
+@media (max-width: 480px) {
+  .co-promotion {
+    flex-direction: column;
+  }
+
+  .co-promotion .co-btn {
+    width: 100%;
+  }
+}

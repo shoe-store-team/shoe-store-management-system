@@ -1,10 +1,12 @@
 
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 import { cartService } from '../../services/cartService';
+import { customerService } from '../../services/customerService';
 import { orderService } from '../../services/orderService';
 import { paymentService } from '../../services/paymentService';
+import { promotionService } from '../../services/promotionService';
 
 import { dinhDangTien } from '../../services/request';
 
@@ -13,49 +15,98 @@ import type {
   PaymentMethod,
   PaymentResult,
 } from '../../types/payment';
+import type { KetQuaMaGiam } from '../../types/promotion';
 
 import { VnpayQrPayment } from './VnpayQrPayment';
+import './checkout.css';
 
 type GioHangData = Awaited<
   ReturnType<typeof cartService.layGioHang>
 >;
 
+type CustomerProfile = {
+  id: string;
+  name: string;
+  phone: string;
+};
+
+type CustomerAddress = {
+  id: string;
+  recipientName: string;
+  phone: string;
+  addressLine: string;
+  ward?: string | null;
+  district?: string | null;
+  province?: string | null;
+  isDefault: boolean;
+};
+
+// Ghép các thành phần địa chỉ thành một chuỗi.
+const formatAddress = (address: CustomerAddress) => {
+  return [
+    address.addressLine,
+    address.ward,
+    address.district,
+    address.province,
+  ]
+    .filter(Boolean)
+    .join(', ');
+};
+
 export function CheckoutPage() {
   const navigate = useNavigate();
+const location = useLocation();
 
-  // Dữ liệu giỏ hàng
+  // =========================================
+  // 1. DỮ LIỆU GIỎ HÀNG VÀ KHÁCH HÀNG
+  // =========================================
+
   const [gioHang, setGioHang] = useState<GioHangData | null>(null);
 
-  // Thông tin người nhận
+  const [addresses, setAddresses] = useState<CustomerAddress[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState('');
+
   const [recipientName, setRecipientName] = useState('');
   const [phone, setPhone] = useState('');
   const [shippingAddress, setShippingAddress] = useState('');
   const [note, setNote] = useState('');
 
-  // Phương thức thanh toán
+  // =========================================
+  // 2. MÃ KHUYẾN MÃI
+  // =========================================
+
+  const [promotionCode, setPromotionCode] = useState('');
+  const [appliedPromotion, setAppliedPromotion] =
+    useState<KetQuaMaGiam | null>(null);
+  const [checkingPromotion, setCheckingPromotion] = useState(false);
+
+  // =========================================
+  // 3. PHƯƠNG THỨC VÀ KẾT QUẢ THANH TOÁN
+  // =========================================
+
   const [paymentMethod, setPaymentMethod] =
     useState<PaymentMethod>('COD');
 
-  // Kết quả tạo đơn hàng
   const [createdOrder, setCreatedOrder] =
     useState<Order | null>(null);
 
-  // Kết quả thanh toán
   const [paymentResult, setPaymentResult] =
     useState<PaymentResult | null>(null);
 
-  // Dữ liệu để hiển thị màn hình QR
   const [qrPayment, setQrPayment] =
     useState<PaymentResult | null>(null);
 
-  // Trạng thái giao diện
+  // =========================================
+  // 4. TRẠNG THÁI GIAO DIỆN
+  // =========================================
+
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
   // =========================================
-  // 1. TẢI GIỎ HÀNG
+  // 5. TẢI GIỎ HÀNG VÀ THÔNG TIN KHÁCH HÀNG
   // =========================================
 
   useEffect(() => {
@@ -86,7 +137,52 @@ export function CheckoutPage() {
       }
     };
 
+    const loadCustomerInfo = async () => {
+      try {
+        const [profileResponse, addressResponse] =
+          await Promise.all([
+            customerService.getProfile(),
+            customerService.getAddresses(),
+          ]);
+
+        if (!mounted) return;
+
+        // API trả về { message, data }.
+        const profile: CustomerProfile =
+          profileResponse.data ?? profileResponse;
+
+        const addressList: CustomerAddress[] =
+          addressResponse.data ?? addressResponse;
+
+        const validAddresses = Array.isArray(addressList)
+          ? addressList
+          : [];
+
+        setAddresses(validAddresses);
+
+        // Điền thông tin cơ bản từ hồ sơ.
+        setRecipientName(profile.name ?? '');
+        setPhone(profile.phone ?? '');
+
+        // Ưu tiên địa chỉ mặc định.
+        const defaultAddress = validAddresses.find(
+          (address) => address.isDefault,
+        );
+
+        if (defaultAddress) {
+          setSelectedAddressId(defaultAddress.id);
+          setRecipientName(defaultAddress.recipientName);
+          setPhone(defaultAddress.phone);
+          setShippingAddress(formatAddress(defaultAddress));
+        }
+      } catch {
+        // Nếu không tải được hồ sơ hoặc địa chỉ,
+        // khách hàng vẫn có thể tự nhập thông tin.
+      }
+    };
+
     void loadCart();
+    void loadCustomerInfo();
 
     return () => {
       mounted = false;
@@ -94,7 +190,67 @@ export function CheckoutPage() {
   }, []);
 
   // =========================================
-  // 2. TẠO GIAO DỊCH THANH TOÁN
+  // 6. CHỌN ĐỊA CHỈ ĐÃ LƯU
+  // =========================================
+
+  const handleSelectAddress = (addressId: string) => {
+    setSelectedAddressId(addressId);
+
+    if (!addressId) {
+      return;
+    }
+
+    const address = addresses.find(
+      (item) => item.id === addressId,
+    );
+
+    if (!address) return;
+
+    setRecipientName(address.recipientName);
+    setPhone(address.phone);
+    setShippingAddress(formatAddress(address));
+  };
+
+  // =========================================
+  // 7. KIỂM TRA VÀ ÁP DỤNG MÃ KHUYẾN MÃI
+  // =========================================
+
+  const handleApplyPromotion = async () => {
+    const code = promotionCode.trim();
+
+    if (!code) {
+      setError('Vui lòng nhập mã khuyến mãi.');
+      return;
+    }
+
+    if (checkingPromotion) return;
+
+    setCheckingPromotion(true);
+    setError('');
+
+    try {
+      const result = await promotionService.kiemTraMa(code);
+
+      setAppliedPromotion(result);
+      setPromotionCode(result.code);
+
+      setSuccessMessage('Áp dụng mã khuyến mãi thành công.');
+    } catch (err) {
+      setAppliedPromotion(null);
+      setSuccessMessage('');
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Mã khuyến mãi không hợp lệ.',
+      );
+    } finally {
+      setCheckingPromotion(false);
+    }
+  };
+
+  // =========================================
+  // 8. TẠO GIAO DỊCH THANH TOÁN
   // =========================================
 
   const createPayment = async (
@@ -114,7 +270,7 @@ export function CheckoutPage() {
 
       setPaymentResult(result);
 
-      // Thanh toán VNPay
+      // Thanh toán VNPay.
       if (method === 'VNPAY') {
         if (result.status === 'PAID') {
           setSuccessMessage(
@@ -123,7 +279,6 @@ export function CheckoutPage() {
           return;
         }
 
-        // Có link thanh toán thì hiển thị QR
         if (result.paymentUrl) {
           setQrPayment(result);
           return;
@@ -135,7 +290,7 @@ export function CheckoutPage() {
         return;
       }
 
-      // Thanh toán COD
+      // Thanh toán COD.
       setSuccessMessage(
         'Đặt hàng thành công! Bạn sẽ thanh toán khi nhận hàng.',
       );
@@ -149,7 +304,7 @@ export function CheckoutPage() {
   };
 
   // =========================================
-  // 3. XỬ LÝ ĐẶT HÀNG
+  // 9. XỬ LÝ ĐẶT HÀNG
   // =========================================
 
   const handleCheckout = async (
@@ -162,27 +317,26 @@ export function CheckoutPage() {
     setError('');
     setSuccessMessage('');
 
-    // Kiểm tra họ tên
+    // Kiểm tra họ tên.
     if (!recipientName.trim()) {
       setError('Vui lòng nhập họ tên người nhận.');
       return;
     }
 
-    // Kiểm tra số điện thoại
-    const normalizedPhone = phone.replace(/\s/g, '');
+ const normalizedPhone = phone.trim();
 
-    if (!/^(0|\+84)[0-9]{9,10}$/.test(normalizedPhone)) {
-      setError('Số điện thoại không hợp lệ.');
-      return;
-    }
+if (!normalizedPhone) {
+  setError('Vui lòng nhập số điện thoại.');
+  return;
+}
 
-    // Kiểm tra địa chỉ
+    // Kiểm tra địa chỉ.
     if (!shippingAddress.trim()) {
       setError('Vui lòng nhập địa chỉ giao hàng.');
       return;
     }
 
-    // Kiểm tra giỏ hàng
+    // Kiểm tra giỏ hàng.
     if (!gioHang || gioHang.items.length === 0) {
       setError('Giỏ hàng đang trống.');
       return;
@@ -191,18 +345,30 @@ export function CheckoutPage() {
     setSubmitting(true);
 
     try {
-      // Tạo đơn hàng trước
+      // Tạo đơn hàng.
       const order = await orderService.taoDonHang({
         recipientName: recipientName.trim(),
         phone: normalizedPhone,
         shippingAddress: shippingAddress.trim(),
+
+        // Chỉ gửi addressId nếu khách vẫn dùng
+        // địa chỉ đã lưu mà không chỉnh sửa.
+        ...(selectedAddressId
+          ? { addressId: selectedAddressId }
+          : {}),
+
         note: note.trim(),
         paymentMethod,
+
+        // Chỉ gửi mã đã được API xác nhận.
+        ...(appliedPromotion
+          ? { promotionCode: appliedPromotion.code }
+          : {}),
       });
 
       setCreatedOrder(order);
 
-      // Sau khi tạo đơn hàng, tạo giao dịch thanh toán
+      // Sau khi tạo đơn hàng, tạo giao dịch thanh toán.
       await createPayment(order, paymentMethod);
     } catch (err) {
       setError(
@@ -216,7 +382,7 @@ export function CheckoutPage() {
   };
 
   // =========================================
-  // 4. THỬ LẠI THANH TOÁN
+  // 10. THỬ LẠI THANH TOÁN
   // =========================================
 
   const handleRetryPayment = async () => {
@@ -232,7 +398,23 @@ export function CheckoutPage() {
   };
 
   // =========================================
-  // 5. ĐANG TẢI GIỎ HÀNG
+  // 11. TÍNH SỐ TIỀN HIỂN THỊ
+  // =========================================
+
+  const subtotal = appliedPromotion
+    ? Number(appliedPromotion.subtotal)
+    : Number(gioHang?.subtotal ?? 0);
+
+  const discountAmount = appliedPromotion
+    ? Number(appliedPromotion.discountAmount)
+    : 0;
+
+  const totalAmount = appliedPromotion
+    ? Number(appliedPromotion.total)
+    : subtotal;
+
+  // =========================================
+  // 12. ĐANG TẢI GIỎ HÀNG
   // =========================================
 
   if (loading) {
@@ -244,7 +426,7 @@ export function CheckoutPage() {
   }
 
   // =========================================
-  // 6. HIỂN THỊ MÀN HÌNH VNPay QR
+  // 13. HIỂN THỊ MÀN HÌNH VNPay QR
   // =========================================
 
   if (qrPayment) {
@@ -261,7 +443,7 @@ export function CheckoutPage() {
   }
 
   // =========================================
-  // 7. HIỂN THỊ KẾT QUẢ ĐƠN HÀNG
+  // 14. HIỂN THỊ KẾT QUẢ ĐƠN HÀNG
   // =========================================
 
   if (createdOrder) {
@@ -274,7 +456,11 @@ export function CheckoutPage() {
     return (
       <div className="co-page">
         <div className="co-result">
-          <i className={`co-result-icon ${isPaid || isCOD ? 'ok' : 'wait'}`}>
+          <i
+            className={`co-result-icon ${
+              isPaid || isCOD ? 'ok' : 'wait'
+            }`}
+          >
             {isPaid || isCOD ? '✓' : '…'}
           </i>
 
@@ -289,9 +475,7 @@ export function CheckoutPage() {
           {successMessage && <p>{successMessage}</p>}
 
           {error && (
-            <div className="voucher-error">
-              {error}
-            </div>
+            <div className="voucher-error">{error}</div>
           )}
 
           <div className="co-facts">
@@ -313,6 +497,20 @@ export function CheckoutPage() {
             <div>
               <span>Địa chỉ</span>
               <strong>{createdOrder.shippingAddress}</strong>
+            </div>
+
+            <div>
+              <span>Tạm tính</span>
+              <strong>
+                {dinhDangTien(Number(createdOrder.subtotalAmount))}
+              </strong>
+            </div>
+
+            <div>
+              <span>Giảm giá</span>
+              <strong>
+                {dinhDangTien(Number(createdOrder.discountAmount))}
+              </strong>
             </div>
 
             <div>
@@ -383,7 +581,7 @@ export function CheckoutPage() {
   }
 
   // =========================================
-  // 8. GIỎ HÀNG TRỐNG
+  // 15. GIỎ HÀNG TRỐNG
   // =========================================
 
   if (!gioHang || gioHang.items.length === 0) {
@@ -408,7 +606,7 @@ export function CheckoutPage() {
   }
 
   // =========================================
-  // 9. GIAO DIỆN CHECKOUT
+  // 16. GIAO DIỆN CHECKOUT
   // =========================================
 
   return (
@@ -419,9 +617,11 @@ export function CheckoutPage() {
       </div>
 
       {error && (
-        <div className="voucher-error">
-          {error}
-        </div>
+        <div className="voucher-error">{error}</div>
+      )}
+
+      {successMessage && (
+        <p className="co-success-message">{successMessage}</p>
       )}
 
       <div className="checkout-grid">
@@ -433,15 +633,37 @@ export function CheckoutPage() {
           <section>
             <h2>Thông tin người nhận</h2>
 
+            {addresses.length > 0 && (
+              <label className="full">
+                Chọn địa chỉ đã lưu
+                <select
+                  value={selectedAddressId}
+                  onChange={(event) =>
+                    handleSelectAddress(event.target.value)
+                  }
+                >
+                  <option value="">Nhập địa chỉ khác</option>
+
+                  {addresses.map((address) => (
+                    <option key={address.id} value={address.id}>
+                      {address.recipientName} - {formatAddress(address)}
+                      {address.isDefault ? ' (Mặc định)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+
             <div className="form-grid">
               <label className="full">
                 Họ và tên người nhận
                 <input
                   type="text"
                   value={recipientName}
-                  onChange={(event) =>
-                    setRecipientName(event.target.value)
-                  }
+                  onChange={(event) => {
+                    setRecipientName(event.target.value);
+                    setSelectedAddressId('');
+                  }}
                   placeholder="Nhập họ và tên"
                   autoComplete="name"
                   required
@@ -453,9 +675,10 @@ export function CheckoutPage() {
                 <input
                   type="tel"
                   value={phone}
-                  onChange={(event) =>
-                    setPhone(event.target.value)
-                  }
+                  onChange={(event) => {
+                    setPhone(event.target.value);
+                    setSelectedAddressId('');
+                  }}
                   placeholder="Nhập số điện thoại"
                   autoComplete="tel"
                   required
@@ -466,9 +689,10 @@ export function CheckoutPage() {
                 Địa chỉ giao hàng
                 <textarea
                   value={shippingAddress}
-                  onChange={(event) =>
-                    setShippingAddress(event.target.value)
-                  }
+                  onChange={(event) => {
+                    setShippingAddress(event.target.value);
+                    setSelectedAddressId('');
+                  }}
                   placeholder="Nhập địa chỉ nhận hàng"
                   autoComplete="street-address"
                   rows={3}
@@ -488,6 +712,40 @@ export function CheckoutPage() {
                 />
               </label>
             </div>
+          </section>
+
+          {/* Mã khuyến mãi */}
+          <section>
+            <h2>Mã khuyến mãi</h2>
+
+            <div className="co-promotion">
+              <input
+                type="text"
+                value={promotionCode}
+                onChange={(event) => {
+                  setPromotionCode(event.target.value);
+                  setAppliedPromotion(null);
+                  setSuccessMessage('');
+                }}
+                placeholder="Nhập mã giảm giá"
+                disabled={checkingPromotion}
+              />
+
+              <button
+                type="button"
+                className="co-btn primary"
+                onClick={handleApplyPromotion}
+                disabled={checkingPromotion || !promotionCode.trim()}
+              >
+                {checkingPromotion ? 'Đang kiểm tra...' : 'Áp dụng'}
+              </button>
+            </div>
+
+            {appliedPromotion && (
+              <p className="co-promotion-success">
+                Đã áp dụng: {appliedPromotion.name}
+              </p>
+            )}
           </section>
 
           <section>
@@ -547,10 +805,17 @@ export function CheckoutPage() {
               key={`${item.productName}-${item.size}-${item.color}-${index}`}
             >
               <div className="summary-product-image">
-                <div className="summary-product-placeholder">
-                  Sản phẩm
-                </div>
-              </div>
+  {item.imageUrl ? (
+    <img
+      src={item.imageUrl}
+      alt={item.productName}
+    />
+  ) : (
+    <div className="summary-product-placeholder">
+      Sản phẩm
+    </div>
+  )}
+</div>
 
               <div className="summary-product-info">
                 <strong>{item.productName}</strong>
@@ -570,16 +835,19 @@ export function CheckoutPage() {
 
           <div className="sum-row">
             <span>Tạm tính</span>
+            <strong>{dinhDangTien(subtotal)}</strong>
+          </div>
+
+          <div className="sum-row">
+            <span>Giảm giá</span>
             <strong>
-              {dinhDangTien(Number(gioHang.subtotal))}
+              -{dinhDangTien(discountAmount)}
             </strong>
           </div>
 
           <div className="sum-total">
             <span>Tổng thanh toán</span>
-            <strong>
-              {dinhDangTien(Number(gioHang.subtotal))}
-            </strong>
+            <strong>{dinhDangTien(totalAmount)}</strong>
           </div>
 
           <p className="muted">

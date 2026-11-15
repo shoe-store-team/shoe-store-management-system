@@ -25,11 +25,7 @@ function taoMaPhieuKho(type: InventoryDocumentType): string {
   return `${type}-${stamp}-${random}`;
 }
 
-function kiemTraSoDienThoai(phone: string): boolean {
-  return /^(0|\+84)[0-9]{9,10}$/.test(
-    phone.replace(/\s/g, ''),
-  );
-}
+
 
 // Khóa đơn hàng để đồng bộ với payment.service.ts.
 // Cả hai nơi phải dùng cùng một khóa.
@@ -76,9 +72,9 @@ export async function createOrder(
     throw new HttpError(400, 'Thong tin giao hang khong day du');
   }
 
-  if (!kiemTraSoDienThoai(phone)) {
-    throw new HttpError(400, 'So dien thoai khong hop le');
-  }
+  if (!phone.trim()) {
+  throw new HttpError(400, 'Vui long nhap so dien thoai');
+}
 
   if (
     paymentMethod !== PaymentMethod.COD &&
@@ -707,6 +703,29 @@ export async function cancelOrder(
           'Don hang da duoc xu ly boi yeu cau khac',
         );
       }
+      // HOÀN LƯỢT SỬ DỤNG VOUCHER KHI HỦY ĐƠN
+if (order.promotionId) {
+  const restoredPromotion = await tx.promotion.updateMany({
+    where: {
+      id: order.promotionId,
+      usageCount: {
+        gt: 0,
+      },
+    },
+    data: {
+      usageCount: {
+        decrement: 1,
+      },
+    },
+  });
+
+  if (restoredPromotion.count !== 1) {
+    throw new HttpError(
+      409,
+      'Khong the hoan luot su dung voucher',
+    );
+  }
+}
 
       // HOÀN TỒN KHO
 
