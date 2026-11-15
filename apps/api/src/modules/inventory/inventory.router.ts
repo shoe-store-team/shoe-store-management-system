@@ -455,32 +455,23 @@ router.post("/documents/:id/cancel", async (req: Request, res: Response) => {
     return respondWithError(res, error, "Không thể hủy phiếu kho.");
   }
 });
-// Trừ tồn kho theo đơn hàng
+// Trừ tồn kho theo đơn hàng (lấy số lượng trực tiếp từ orderItems trong database)
 router.post("/orders/:orderId/deduct", async (req: Request, res: Response) => {
   const { orderId } = req.params;
-  const { reason, items } = req.body ?? {};
-const actorId = req.authUser!.id;
-  const parsedItems = parseItems(items);
+  const { reason } = req.body ?? {};
+  const actorId = req.authUser!.id;
 
-  if (
-    typeof orderId !== "string" ||
-    !orderId.trim() ||
-    !parsedItems
-  ) {
+  if (typeof orderId !== "string" || !orderId.trim()) {
     return res
       .status(400)
-      .json({ message: "Dữ liệu trừ kho đơn hàng không hợp lệ." });
+      .json({ message: "Mã đơn hàng không hợp lệ." });
   }
 
   try {
     const result = await inventoryService.deductStockForOrder({
-      orderId,
+      orderId: orderId.trim(),
       actorId,
-      reason,
-      items: parsedItems.map((i) => ({
-        variantId: i.variantId,
-        quantity: i.quantity ?? 0,
-      })),
+      reason: typeof reason === "string" ? reason : undefined,
     });
     return res.json(result);
   } catch (error) {
