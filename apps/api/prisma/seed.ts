@@ -140,6 +140,38 @@ async function main() {
   });
 
   console.log(`Đã kiểm tra tài khoản Admin: ${adminEmail}`);
+  // Tạo tài khoản Customer dùng để kiểm thử
+const customerEmail = "customer.test@shoestore.com";
+const customerPassword = "Customer123";
+
+const hashedCustomerPassword = await bcrypt.hash(
+  customerPassword,
+  10,
+);
+
+await prisma.user.upsert({
+  where: {
+    email: customerEmail,
+  },
+  update: {
+    password: hashedCustomerPassword,
+    name: "Customer Test",
+    role: "CUSTOMER",
+    isActive: true,
+  },
+  create: {
+  email: customerEmail,
+  password: hashedCustomerPassword,
+  name: "Customer Test",
+  phone: "0912345678",
+  role: "CUSTOMER",
+  isActive: true,
+},
+});
+
+console.log(`Đã kiểm tra tài khoản Customer: ${customerEmail}`);
+
+  
 
   // 1. Tạo danh mục nếu chưa tồn tại.
   const tenDanhMuc = [

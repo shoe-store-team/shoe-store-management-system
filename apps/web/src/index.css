@@ -3056,3 +3056,329 @@ button {
     font-size: 24px;
   }
 }
+
+/* =========================================
+   ORDER HISTORY - LỊCH SỬ ĐƠN HÀNG
+========================================= */
+
+.order-history-page,
+.order-management-page {
+  width: min(1100px, calc(100% - 40px));
+  margin: 36px auto;
+  color: #25241f;
+  box-sizing: border-box;
+}
+
+.order-page-loading {
+  padding: 40px 20px;
+  text-align: center;
+  color: #74776f;
+  font-size: 14px;
+}
+
+.order-history-page > h1,
+.order-management-page h1 {
+  margin: 0 0 24px;
+  color: #1b2a22;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+.order-history-page .overflow-hidden.rounded-xl.border.bg-white.shadow-sm,
+.order-management-page .overflow-hidden.rounded-xl.border.bg-white.shadow-sm {
+  overflow: hidden;
+  margin-bottom: 20px;
+  border: 1px solid #e8e4dc;
+  border-radius: 13px;
+  background: #fff;
+  box-shadow: 0 4px 18px #25241f08;
+}
+
+/* Header của từng đơn hàng */
+.order-history-page .border-b.bg-gray-50,
+.order-management-page .border-b.bg-gray-50 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 20px;
+  background: #f5f3ed;
+  border-bottom: 1px solid #e8e4dc;
+}
+
+.order-history-page .font-semibold,
+.order-management-page .font-bold {
+  color: #1b2a22;
+}
+
+.order-history-page .border-b p,
+.order-management-page .border-b p {
+  margin: 0;
+}
+
+.order-history-page .text-gray-500,
+.order-management-page .text-gray-500 {
+  color: #777b73;
+}
+
+/* Nhãn trạng thái */
+.order-history-page .rounded-full,
+.order-management-page .rounded-full {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 30px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.order-history-page .bg-blue-100,
+.order-management-page .bg-blue-100 {
+  background: #e7eee9;
+  color: #315640;
+}
+
+.order-history-page .bg-green-100,
+.order-management-page .bg-green-100 {
+  background: #e5f2e8;
+  color: #267342;
+}
+
+.order-history-page .bg-red-100,
+.order-management-page .bg-red-100 {
+  background: #fff0ed;
+  color: #b83b35;
+}
+
+.order-history-page .bg-purple-100,
+.order-management-page .bg-purple-100 {
+  background: #f0eafa;
+  color: #7044a0;
+}
+
+.order-history-page .bg-yellow-100,
+.order-management-page .bg-yellow-100 {
+  background: #fff5df;
+  color: #936719;
+}
+
+/* Nội dung thông tin */
+.order-history-page .space-y-2.p-4,
+.order-management-page .grid.gap-4.p-4 {
+  padding: 20px;
+}
+
+.order-history-page h2,
+.order-management-page h3 {
+  margin-top: 0;
+  color: #1b2a22;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.order-history-page p,
+.order-management-page p {
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.order-management-page .grid.gap-4.p-4 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.order-management-page .grid.gap-4.p-4 > div {
+  min-width: 0;
+}
+
+/* Khu vực sản phẩm */
+.order-history-page .border-t.p-4,
+.order-management-page .border-t.p-4 {
+  padding: 20px;
+  border-top: 1px solid #eeeae2;
+}
+
+.order-history-page .rounded-lg.bg-gray-50.p-3,
+.order-management-page .rounded-lg.bg-gray-50.p-3 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 1px solid #eeeae2;
+  border-radius: 9px;
+  background: #faf9f6;
+}
+
+.order-history-page .rounded-lg.bg-gray-50.p-3 p,
+.order-management-page .rounded-lg.bg-gray-50.p-3 p {
+  margin: 3px 0;
+}
+
+.order-history-page .font-medium,
+.order-management-page .font-medium {
+  color: #25241f;
+}
+
+/* Khu vực tổng tiền và thao tác */
+.order-history-page .border-t.bg-gray-50.p-4,
+.order-management-page .border-t.bg-gray-50.p-4 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  padding: 18px 20px;
+  border-top: 1px solid #e8e4dc;
+  background: #f5f3ed;
+}
+
+.order-history-page .text-red-600,
+.order-management-page .text-red-600 {
+  color: #c65b38;
+}
+
+.order-history-page .text-lg.font-bold {
+  margin-top: 8px;
+  color: #c65b38;
+  font-size: 19px;
+}
+
+/* Nút thao tác */
+.order-history-page button,
+.order-management-page button {
+  min-height: 40px;
+  padding: 10px 18px;
+  border: 0;
+  border-radius: 7px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.order-history-page button.bg-red-600,
+.order-management-page button.bg-red-600 {
+  background: #c65b38;
+  color: #fff;
+}
+
+.order-history-page button.bg-red-600:hover:not(:disabled),
+.order-management-page button.bg-red-600:hover:not(:disabled) {
+  background: #a9472b;
+}
+
+.order-management-page button.bg-blue-600 {
+  background: #1b2a22;
+  color: #fff;
+}
+
+.order-management-page button.bg-blue-600:hover:not(:disabled) {
+  background: #304b3c;
+}
+
+.order-management-page > div > button {
+  border: 1px solid #dcd7cd;
+  background: #fff;
+  color: #1b2a22;
+}
+
+.order-management-page > div > button:hover:not(:disabled) {
+  background: #f0eee7;
+}
+
+.order-history-page button:disabled,
+.order-management-page button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Thông báo lỗi */
+.order-history-page .bg-red-100,
+.order-management-page .bg-red-100 {
+  padding: 12px 15px;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  background: #fff0ed;
+  color: #b83b35;
+  font-size: 13px;
+}
+
+/* Trường hợp chưa có đơn hàng */
+.order-history-page .rounded-lg.border.bg-white.p-8,
+.order-management-page .rounded-lg.border.bg-white.p-8 {
+  padding: 36px 20px;
+  border: 1px dashed #d8d2c6;
+  border-radius: 12px;
+  background: #fff;
+  color: #777b73;
+  text-align: center;
+}
+
+/* Thống kê tổng đơn ở trang quản trị */
+.order-management-page .rounded-lg.border.bg-white.p-4 {
+  padding: 18px 20px;
+  margin-bottom: 20px;
+  border: 1px solid #e8e4dc;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.order-management-page .rounded-lg.border.bg-white.p-4 p {
+  margin: 0;
+}
+
+.order-management-page .rounded-lg.border.bg-white.p-4 .text-2xl {
+  margin-top: 5px;
+  color: #c65b38;
+  font-size: 26px;
+  font-weight: 800;
+}
+
+/* Responsive */
+@media (max-width: 650px) {
+  .order-history-page,
+  .order-management-page {
+    width: calc(100% - 24px);
+    margin: 20px auto;
+  }
+
+  .order-history-page > h1,
+  .order-management-page h1 {
+    font-size: 23px;
+  }
+
+  .order-history-page .border-b.bg-gray-50,
+  .order-management-page .border-b.bg-gray-50 {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 16px;
+  }
+
+  .order-history-page .border-t.bg-gray-50.p-4,
+  .order-management-page .border-t.bg-gray-50.p-4 {
+    align-items: stretch;
+    flex-direction: column;
+    padding: 16px;
+  }
+
+  .order-management-page .grid.gap-4.p-4 {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .order-history-page .rounded-lg.bg-gray-50.p-3,
+  .order-management-page .rounded-lg.bg-gray-50.p-3 {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .order-history-page button,
+  .order-management-page button {
+    width: 100%;
+  }
+}
+

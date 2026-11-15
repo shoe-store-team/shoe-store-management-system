@@ -140,14 +140,14 @@ export function Page() {
 
   if (loading) {
     return (
-      <div className="p-6 text-center">
+      <div className="order-management-page order-page-loading">
         Đang tải danh sách đơn hàng...
       </div>
     );
   }
 
   return (
-    <div className="p-4 md:p-6">
+    <div className="order-management-page">
       <div className="mb-6 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <div>
           <h1 className="text-2xl font-bold">
@@ -193,6 +193,7 @@ export function Page() {
         <div className="space-y-4">
           {orders.map((order) => {
             const next = nextStatus[order.status];
+            console.log('ORDER ADMIN:', order);
 
             // Tất cả bước chuyển trạng thái đều phải thỏa điều kiện thanh toán.
             const canAdvance =

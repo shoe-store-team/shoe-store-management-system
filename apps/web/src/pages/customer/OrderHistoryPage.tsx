@@ -1,3 +1,4 @@
+
 import { useCallback, useEffect, useState } from 'react';
 import { orderService } from '../../services/orderService';
 import { dinhDangTien } from '../../services/request';
@@ -89,14 +90,14 @@ export function Page() {
 
   if (loading) {
     return (
-      <div className="p-6 text-center">
+      <div className="order-history-page order-page-loading">
         Đang tải đơn hàng...
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-5xl p-4 md:p-6">
+    <div className="order-history-page">
       <h1 className="mb-6 text-2xl font-bold">
         Lịch sử đơn hàng
       </h1>
