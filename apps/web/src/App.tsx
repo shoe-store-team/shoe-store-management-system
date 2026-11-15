@@ -30,7 +30,7 @@ import { ProfilePage } from "./pages/customer/ProfilePage";
 import { Page as OrderHistoryPage } from "./pages/customer/OrderHistoryPage";
 
 // Admin
-import { Page as DashboardPage } from "./pages/admin/dashboard/DashboardPage";
+import { Page as DashboardPage } from "./pages/admin/DashboardPage";
 import { InventoryCheckPage } from "./pages/admin/inventory/InventoryCheckPage";
 import { InventoryHistoryPage } from "./pages/admin/inventory/InventoryHistoryPage";
 import { StockAdjustmentPage } from "./pages/admin/inventory/StockAdjustmentPage";
